@@ -1,0 +1,238 @@
+{
+  "id": "postman-1757866787805",
+  "suiteName": "abibliadigital",
+  "applicationName": "abibliadigital-books",
+  "type": "API",
+  "baseUrl": "https://www.abibliadigital.com.br",
+  "tags": [
+    {
+      "source": "@postman"
+    },
+    {
+      "collection": "@abibliadigital"
+    }
+  ],
+  "testCases": [
+    {
+      "name": "Create A new User",
+      "status": "Not Started",
+      "type": "REST",
+      "testData": [
+        {
+          "name": "Create A new User",
+          "method": "POST",
+          "endpoint": "/api/users",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "preProcess": null,
+          "body": {
+            "name": "Afsar",
+            "email": "afsar123@email.com",
+            "password": "102030",
+            "notifications": true
+          },
+          "assertions": [
+            {
+              "type": "statusCode",
+              "expected": 201
+            }
+          ],
+          "store": {}
+        },
+        {
+          "name": "Create A new User - Invalid Data",
+          "method": "POST",
+          "endpoint": "/api/users",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "preProcess": null,
+          "body": {},
+          "assertions": [
+            {
+              "type": "statusCode",
+              "expected": 400
+            }
+          ],
+          "store": {}
+        }
+      ],
+      "testSteps": []
+    },
+    {
+      "name": "Get User by Email",
+      "status": "Not Started",
+      "type": "REST",
+      "testData": [
+        {
+          "name": "Get User by Email",
+          "method": "GET",
+          "endpoint": "/api/users/:email",
+          "headers": {
+            "Authorization": "Bearer Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdHIiOiJTdW4gSnVuIDI5IDIwMjUgMTM6Mjk6MDEgR01UKzAwMDAuYWZzYXIxMjNAZW1haWwuY29tIiwiaWF0IjoxNzUxMjAzNzQxfQ.sgXscgrAM_CicaAwSEnGUQwDHYqYD_JyM-pIbX4plUI"
+          },
+          "preProcess": null,
+          "assertions": [
+            {
+              "type": "statusCode",
+              "expected": 200
+            },
+            {
+              "type": "exists",
+              "jsonPath": "$"
+            }
+          ],
+          "store": {}
+        },
+        {
+          "name": "Get User by Email - Unauthorized",
+          "method": "GET",
+          "endpoint": "/api/users/:email",
+          "headers": {},
+          "preProcess": null,
+          "assertions": [
+            {
+              "type": "statusCode",
+              "expected": 401
+            }
+          ],
+          "store": {}
+        }
+      ],
+      "testSteps": []
+    },
+    {
+      "name": "Get User Stats",
+      "status": "Not Started",
+      "type": "REST",
+      "testData": [
+        {
+          "name": "Get User Stats",
+          "method": "GET",
+          "endpoint": "/api/users/stats",
+          "headers": {},
+          "preProcess": null,
+          "assertions": [
+            {
+              "type": "statusCode",
+              "expected": 200
+            },
+            {
+              "type": "exists",
+              "jsonPath": "$"
+            }
+          ],
+          "store": {}
+        }
+      ],
+      "testSteps": []
+    },
+    {
+      "name": "Get  Requests",
+      "status": "Not Started",
+      "type": "REST",
+      "testData": [
+        {
+          "name": "Get  Requests",
+          "method": "GET",
+          "endpoint": "/api/requests/:range",
+          "headers": {},
+          "preProcess": null,
+          "assertions": [
+            {
+              "type": "statusCode",
+              "expected": 200
+            },
+            {
+              "type": "exists",
+              "jsonPath": "$"
+            }
+          ],
+          "store": {}
+        }
+      ],
+      "testSteps": []
+    },
+    {
+      "name": "Get Number Requisitions",
+      "status": "Not Started",
+      "type": "REST",
+      "testData": [
+        {
+          "name": "Get Number Requisitions",
+          "method": "GET",
+          "endpoint": "/api/requests/amount/day",
+          "headers": {},
+          "preProcess": null,
+          "assertions": [
+            {
+              "type": "statusCode",
+              "expected": 200
+            },
+            {
+              "type": "exists",
+              "jsonPath": "$"
+            }
+          ],
+          "store": {}
+        }
+      ],
+      "testSteps": []
+    },
+    {
+      "name": "Get Books",
+      "status": "Not Started",
+      "type": "REST",
+      "testData": [
+        {
+          "name": "Get Books",
+          "method": "GET",
+          "endpoint": "/api/books",
+          "headers": {},
+          "preProcess": null,
+          "assertions": [
+            {
+              "type": "statusCode",
+              "expected": 200
+            },
+            {
+              "type": "exists",
+              "jsonPath": "$"
+            }
+          ],
+          "store": {}
+        }
+      ],
+      "testSteps": []
+    },
+    {
+      "name": "Get Book",
+      "status": "Not Started",
+      "type": "REST",
+      "testData": [
+        {
+          "name": "Get Book",
+          "method": "GET",
+          "endpoint": "/api/books/mt",
+          "headers": {},
+          "preProcess": null,
+          "assertions": [
+            {
+              "type": "statusCode",
+              "expected": 200
+            },
+            {
+              "type": "exists",
+              "jsonPath": "$"
+            }
+          ],
+          "store": {}
+        }
+      ],
+      "testSteps": []
+    }
+  ],
+  "status": "Not Started",
+  "filePath": "abibliadigital"
+}
