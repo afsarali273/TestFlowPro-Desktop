@@ -18,20 +18,40 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps
+      - name: Install production dependencies in dist-app
+        run: |
+          mkdir dist-app
+          copy package.json dist-app
+          copy server.js dist-app
+          cd dist-app
+          npm install --only=production --legacy-peer-deps
+          cd ..
 
       - name: Build Next.js app
         run: npm run build
 
-      - name: Run PowerShell packaging script
-        shell: pwsh
-        run: ./prepare-distribution.ps1
-
-      - name: Zip dist-app folder (excluding node_modules)
+      - name: Copy build and public folders to dist-app
         run: |
-          powershell Remove-Item -Recurse -Force dist-app\node_modules
-          powershell Compress-Archive -Path dist-app\* -DestinationPath testflow-pro-ui.zip
+          xcopy .next dist-app\.next /E /I /Y
+          xcopy public dist-app\public /E /I /Y
+
+      - name: Download and extract portable Node.js
+        run: |
+          curl.exe -L https://nodejs.org/dist/v18.20.2/node-v18.20.2-win-x64.zip -o nodejs.zip
+          powershell Expand-Archive -Path nodejs.zip -DestinationPath dist-app
+          powershell Rename-Item -Path dist-app\node-v18.20.2-win-x64 -NewName nodejs
+          del nodejs.zip
+
+      - name: Create run.bat
+        run: |
+          echo @echo off > dist-app\run.bat
+          echo setlocal >> dist-app\run.bat
+          echo set NODE_ENV=production >> dist-app\run.bat
+          echo nodejs\node.exe server.js >> dist-app\run.bat
+          echo pause >> dist-app\run.bat
+
+      - name: Zip dist-app folder (including node_modules)
+        run: powershell Compress-Archive -Path dist-app\* -DestinationPath testflow-pro-ui.zip
 
       - name: Upload zip artifact
         uses: actions/upload-artifact@v4
