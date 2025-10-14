@@ -18,40 +18,18 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install production dependencies
-        run: npm install --only=production  --legacy-peer-deps
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
 
       - name: Build Next.js app
         run: npm run build
 
-      - name: Download portable Node.js
-        run: |
-          curl -L -o nodejs.zip https://nodejs.org/dist/latest-v18.x/node-v18.20.2-win-x64.zip
-          mkdir nodejs
-          tar -xf nodejs.zip -C nodejs --strip-components=1
+      - name: Run PowerShell packaging script
+        shell: pwsh
+        run: ./prepare-distribution.ps1
 
-      - name: Create run.bat
-        run: |
-          echo @echo off > run.bat
-          echo setlocal >> run.bat
-          echo set NODE_ENV=production >> run.bat
-          echo nodejs\node.exe server.js >> run.bat
-          echo pause >> run.bat
-
-      - name: Prepare dist folder
-        run: |
-          mkdir dist
-          xcopy .next dist\.next /E /I /Y
-          xcopy public dist\public /E /I /Y
-          copy server.js dist\server.js
-          copy package.json dist\package.json
-          xcopy node_modules dist\node_modules /E /I /Y
-          xcopy nodejs dist\nodejs /E /I /Y
-          copy run.bat dist\run.bat
-
-      - name: Zip dist folder
-        run: |
-          powershell Compress-Archive -Path dist/* -DestinationPath portable-nextjs.zip
+      - name: Zip dist-app folder
+        run: powershell Compress-Archive -Path dist-app/* -DestinationPath portable-nextjs.zip
 
       - name: Upload zip artifact
         uses: actions/upload-artifact@v4
