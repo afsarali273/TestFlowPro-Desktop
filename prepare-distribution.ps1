@@ -24,6 +24,9 @@ Pop-Location
 # Copy .next and public folders
 Copy-Item .next "$distFolder\.next" -Recurse
 Copy-Item public "$distFolder\public" -Recurse
+Copy-Item public "$distFolder\components" -Recurse
+Copy-Item public "$distFolder\hooks" -Recurse
+Copy-Item public "$distFolder\lib" -Recurse
 
 # Download and extract portable Node.js directly into dist-app
 curl.exe -L $nodejsZipUrl -o $nodejsZip
