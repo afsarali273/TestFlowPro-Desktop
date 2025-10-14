@@ -18,21 +18,21 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Build Next.js app
-        run: npm run build
+#      - name: Install dependencies
+#        run: npm install --legacy-peer-deps
+#
+#      - name: Build Next.js app
+#        run: npm run build
 
       - name: Run PowerShell packaging script
         shell: pwsh
         run: ./prepare-distribution.ps1
 
       - name: Zip dist-app folder
-        run: powershell Compress-Archive -Path dist-app/* -DestinationPath portable-nextjs.zip
+        run: powershell Compress-Archive -Path dist-app/* -DestinationPath testflow-pro-ui.zip
 
       - name: Upload zip artifact
         uses: actions/upload-artifact@v4
         with:
-          name: portable-nextjs
-          path: portable-nextjs.zip
+          name: testflow-pro-ui
+          path: testflow-pro-ui.zip
