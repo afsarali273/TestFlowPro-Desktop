@@ -491,10 +491,31 @@ export function AIChat() {
         })
       })
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        let errorMessage = 'Failed to generate UI test suite'
+        
+        if (response.status === 403) {
+          errorMessage = '🚫 Access forbidden. Please check your GitHub Copilot permissions or switch to Ollama provider.'
+        } else if (response.status === 402) {
+          errorMessage = '💳 GitHub Copilot quota exceeded. Please check your subscription or switch to Ollama provider.'
+        } else if (errorData.error) {
+          errorMessage = `❌ API Error (${response.status}): ${errorData.error}`
+        }
+        
+        addMessage(errorMessage, 'ai')
+        toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
+        return
+      }
+
       const data = await response.json()
       if (aiProvider === 'github-copilot') {
         // Parse GitHub Copilot response
         try {
+          if (!data.response || typeof data.response !== 'string') {
+            throw new Error('Invalid response format')
+          }
+          
           const jsonMatch = data.response.match(/```json\s*([\s\S]*?)\s*```/) || data.response.match(/{[\s\S]*}/)
           if (jsonMatch) {
             const jsonStr = jsonMatch[1] || jsonMatch[0]
@@ -511,13 +532,21 @@ export function AIChat() {
           return
         }
       } else {
+        if (!data.testSuite) {
+          addMessage('❌ No test suite generated. Please try rephrasing your UI steps or switch providers.', 'ai')
+          toast({ title: 'Error', description: 'No test suite generated', variant: 'destructive' })
+          return
+        }
         setGeneratedSuite(data.testSuite)
         const isUITest = data.testSuite.type === 'UI'
         addMessage('', 'ai', true, isUITest) // Add generic success message to chat
       }
       toast({ title: 'UI Test Suite Generated', description: 'Generated from test steps' })
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to generate UI test suite', variant: 'destructive' })
+    } catch (error: any) {
+      console.error('UI Steps Generation Error:', error)
+      const errorMsg = error.message || 'Failed to generate UI test suite'
+      addMessage(`❌ ${errorMsg}`, 'ai')
+      toast({ title: 'Error', description: errorMsg, variant: 'destructive' })
     } finally {
       setIsLoading(false)
     }
@@ -703,10 +732,10 @@ export function AIChat() {
 
       {/* Modern Chat Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-gradient-to-br from-black/60 via-purple-900/20 to-blue-900/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-6xl h-[90vh] bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
+        <div className="fixed inset-0 bg-gradient-to-br from-black/60 via-purple-900/20 to-blue-900/30 backdrop-blur-sm z-50 flex items-center justify-center p-2 animate-in fade-in duration-300">
+          <div className="w-full max-w-5xl h-[95vh] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
             {/* Modern Header with Gradient */}
-            <div className="relative bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-700 p-6 border-b border-white/10">
+            <div className="relative bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-700 p-4 border-b border-white/10">
               {/* Animated Background Pattern */}
               <div className="absolute inset-0 opacity-10">
                 <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16 animate-pulse"></div>
@@ -725,15 +754,15 @@ export function AIChat() {
                     </div>
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h1 className="text-xl font-bold text-white flex items-center gap-2">
                       AI Test Suite Generator
                       <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce animation-delay-150"></div>
-                        <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce animation-delay-300"></div>
+                        <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 bg-pink-400 rounded-full animate-bounce animation-delay-150"></div>
+                        <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce animation-delay-300"></div>
                       </div>
                     </h1>
-                    <p className="text-white/80 text-sm mt-1">Transform your ideas into comprehensive test suites</p>
+                    <p className="text-white/80 text-xs mt-1">Transform your ideas into comprehensive test suites</p>
                   </div>
                 </div>
                 
@@ -770,12 +799,12 @@ export function AIChat() {
 
             <div className="flex-1 flex overflow-hidden">
               {/* Left Sidebar - Tools & Settings */}
-              <div className="w-80 bg-gradient-to-b from-slate-50 to-white border-r border-slate-200/50 flex flex-col">
+              <div className="w-64 bg-gradient-to-b from-slate-50 to-white border-r border-slate-200/50 flex flex-col overflow-y-auto">
                 {/* Provider Settings */}
                 <div className="p-4 border-b border-slate-200/50">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                      <Settings className="h-4 w-4 text-purple-600" />
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-sm text-slate-800 flex items-center gap-2">
+                      <Settings className="h-3 w-3 text-purple-600" />
                       AI Provider
                     </h3>
                     <Button 
@@ -791,9 +820,9 @@ export function AIChat() {
                   </div>
                   
                   {showProviderSettings && (
-                    <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
-                      <div className="grid grid-cols-1 gap-2">
-                        <label className={`relative flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                    <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
+                      <div className="grid grid-cols-1 gap-1.5">
+                        <label className={`relative flex items-center p-2 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                           aiProvider === 'ollama' 
                             ? 'border-purple-300 bg-purple-50 shadow-md' 
                             : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
@@ -806,20 +835,20 @@ export function AIChat() {
                             onChange={(e) => setAiProvider(e.target.value as 'ollama')}
                             className="sr-only"
                           />
-                          <div className="flex items-center gap-3 w-full">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          <div className="flex items-center gap-2 w-full">
+                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
                               aiProvider === 'ollama' ? 'bg-purple-500 text-white' : 'bg-slate-200 text-slate-600'
                             }`}>
                               🏠
                             </div>
                             <div className="flex-1">
-                              <div className="font-medium text-sm">Ollama</div>
-                              <div className="text-xs text-slate-600">Local AI instance</div>
+                              <div className="font-medium text-xs">Ollama</div>
+                              <div className="text-xs text-slate-500">Local AI instance</div>
                             </div>
                           </div>
                         </label>
                         
-                        <label className={`relative flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                        <label className={`relative flex items-center p-2 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                           aiProvider === 'github-copilot' 
                             ? 'border-blue-300 bg-blue-50 shadow-md' 
                             : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
@@ -832,20 +861,20 @@ export function AIChat() {
                             onChange={(e) => setAiProvider(e.target.value as 'github-copilot')}
                             className="sr-only"
                           />
-                          <div className="flex items-center gap-3 w-full">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          <div className="flex items-center gap-2 w-full">
+                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
                               aiProvider === 'github-copilot' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-600'
                             }`}>
                               🔗
                             </div>
                             <div className="flex-1">
-                              <div className="font-medium text-sm flex items-center gap-2">
+                              <div className="font-medium text-xs flex items-center gap-2">
                                 GitHub Copilot
                                 {githubAuthStatus === 'authenticated' && (
-                                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
                                 )}
                               </div>
-                              <div className="text-xs text-slate-600">Cloud AI service</div>
+                              <div className="text-xs text-slate-500">Cloud AI service</div>
                             </div>
                           </div>
                         </label>
@@ -915,12 +944,12 @@ export function AIChat() {
                 </div>
 
                 {/* Generation Options */}
-                <div className="p-4 border-b border-slate-200/50">
-                  <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-emerald-600" />
+                <div className="p-3 border-b border-slate-200/50">
+                  <h3 className="font-medium text-sm text-slate-800 mb-2 flex items-center gap-2">
+                    <Zap className="h-3 w-3 text-emerald-600" />
                     Options
                   </h3>
-                  <label className="flex items-center space-x-3 p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border border-emerald-200 cursor-pointer hover:from-emerald-100 hover:to-green-100 transition-all duration-200">
+                  <label className="flex items-center space-x-2 p-2 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-200 cursor-pointer hover:from-emerald-100 hover:to-green-100 transition-all duration-200">
                     <input
                       type="checkbox"
                       checked={generateTestCaseOnly}
@@ -928,19 +957,19 @@ export function AIChat() {
                       className="rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
                     />
                     <div>
-                      <div className="text-sm font-medium text-emerald-900">Test Cases Only</div>
+                      <div className="text-xs font-medium text-emerald-900">Test Cases Only</div>
                       <div className="text-xs text-emerald-700">Generate without suite wrapper</div>
                     </div>
                   </label>
                 </div>
 
                 {/* Navigation Tabs */}
-                <div className="flex-1 p-4">
-                  <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <Code className="h-4 w-4 text-blue-600" />
+                <div className="flex-1 p-3">
+                  <h3 className="font-medium text-sm text-slate-800 mb-3 flex items-center gap-2">
+                    <Code className="h-3 w-3 text-blue-600" />
                     Generation Tools
                   </h3>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {[
                       { id: 'chat', label: 'AI Chat', icon: '💬', desc: 'Natural language' },
                       { id: 'curl', label: 'cURL', icon: '🔗', desc: 'Import commands' },
@@ -951,16 +980,16 @@ export function AIChat() {
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`w-full p-3 rounded-xl text-left transition-all duration-200 ${
+                        className={`w-full p-2 rounded-lg text-left transition-all duration-200 ${
                           activeTab === tab.id
                             ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg transform scale-105'
                             : 'bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg">{tab.icon}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{tab.icon}</span>
                           <div>
-                            <div className="font-medium text-sm">{tab.label}</div>
+                            <div className="font-medium text-xs">{tab.label}</div>
                             <div className={`text-xs ${
                               activeTab === tab.id ? 'text-white/80' : 'text-slate-500'
                             }`}>{tab.desc}</div>
@@ -976,16 +1005,16 @@ export function AIChat() {
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 <div className="flex-1 overflow-y-auto">
                 {activeTab === 'chat' && (
-                  <div className="flex-1 flex flex-col p-6">
+                  <div className="flex-1 flex flex-col p-4">
                     {/* Chat Messages Area */}
-                    <div className="flex-1 min-h-0 overflow-y-auto bg-gradient-to-b from-slate-50/50 to-white rounded-2xl border border-slate-200/50 p-6 mb-6 space-y-4 shadow-inner">
+                    <div className="flex-1 min-h-0 overflow-y-auto bg-gradient-to-b from-slate-50/50 to-white rounded-xl border border-slate-200/50 p-4 mb-4 space-y-3 shadow-inner">
                       {messages.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in duration-500">
-                          <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-3xl flex items-center justify-center mb-4 animate-bounce">
-                            <Bot className="h-10 w-10 text-purple-600" />
+                          <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mb-3 animate-bounce">
+                            <Bot className="h-8 w-8 text-purple-600" />
                           </div>
-                          <h3 className="text-lg font-semibold text-slate-800 mb-2">Welcome to AI Test Generator!</h3>
-                          <p className="text-slate-600 max-w-md">
+                          <h3 className="text-base font-semibold text-slate-800 mb-2">Welcome to AI Test Generator!</h3>
+                          <p className="text-sm text-slate-600 max-w-md">
                             Describe your API endpoints, UI flows, or paste cURL commands. I'll help you create comprehensive test suites.
                           </p>
                           <div className="flex flex-wrap gap-2 mt-4">
@@ -1382,14 +1411,14 @@ Be as detailed as possible for better test generation.`}
                 
                 {/* Generated Suite Preview - Always visible */}
                 {generatedSuite && (
-                  <div className="border-t border-slate-200/50 bg-gradient-to-r from-emerald-50/50 to-green-50/50 p-6 animate-in slide-in-from-bottom-4 duration-500 flex-shrink-0">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                          <Sparkles className="h-5 w-5 text-white" />
+                  <div className="border-t border-slate-200/50 bg-gradient-to-r from-emerald-50/50 to-green-50/50 p-4 animate-in slide-in-from-bottom-4 duration-500 flex-shrink-0">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center shadow-lg">
+                          <Sparkles className="h-4 w-4 text-white" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-slate-800">
+                          <h3 className="font-bold text-sm text-slate-800">
                             {generateTestCaseOnly ? '🎯 Generated Test Cases' : '✨ Generated Test Suite'}
                           </h3>
                           <p className="text-xs text-slate-600">Ready to use in your testing workflow</p>
@@ -1436,8 +1465,8 @@ Be as detailed as possible for better test generation.`}
                         )}
                       </div>
                     </div>
-                    <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-slate-200/50 shadow-inner">
-                      <div className="h-40 overflow-y-auto">
+                    <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg border border-slate-200/50 shadow-inner">
+                      <div className="h-32 overflow-y-auto">
                         <pre className="text-xs text-slate-700 leading-relaxed">
                           {generateTestCaseOnly 
                             ? JSON.stringify(generatedSuite.testCases, null, 2)

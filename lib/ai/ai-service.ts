@@ -365,7 +365,7 @@ Return complete JSON:
           step.locator.options = step.options
           delete step.options
         }
-        
+
         // Fix missing locator structure
         if (!step.locator && step.value && step.keyword !== 'goto') {
           // Detect strategy from value
@@ -489,7 +489,32 @@ Return complete JSON:
   async generateContent(request: GenerateRequest): Promise<{ content: string }> {
     try {
       const chain = this.ragChains.general
-      const response = await chain.invoke({ input: request.prompt })
+      // Invoke LLM with resilient error handling so local LLM failures surface clearly
+      let response: any
+      try {
+        response = await chain.invoke({ input: request.prompt })
+      } catch (err: any) {
+        console.error('LLM invoke error in generateContent:', err)
+        const causeCode = err?.cause?.code || err?.code || ''
+        const isConnRefused =
+          causeCode === 'ECONNREFUSED' ||
+          (typeof err.message === 'string' && err.message.toLowerCase().includes('fetch failed')) ||
+          (typeof err.message === 'string' && (err.message.toLowerCase().includes('connect') || err.message.toLowerCase().includes('econnrefused')))
+
+        if (isConnRefused) {
+          // Try Copilot fallback if available
+          try {
+            const copilotResp = await this.generateCopilotResponse({ message: request.prompt, type: 'general', provider: 'github-copilot' })
+            return { content: copilotResp.response || JSON.stringify(copilotResp.testSuite || copilotResp) }
+          } catch (copilotErr) {
+            console.error('Copilot fallback failed in generateContent:', copilotErr)
+            throw err
+          }
+        }
+
+        throw err
+      }
+
       return { content: typeof response === 'string' ? response : String(response) }
     } catch (error) {
       console.error('AI Content Generation Error:', error)
@@ -529,7 +554,33 @@ Return complete JSON:
       }
       
       const chain = this.ragChains[request.type] || this.ragChains.general
-      let response = await chain.invoke({ input: request.message })
+      // Invoke LLM with explicit error handling so we can detect connection failures and fallback
+      let response: any
+      try {
+        response = await chain.invoke({ input: request.message })
+      } catch (err: any) {
+        console.error('LLM invoke error in generateResponse:', err)
+        const causeCode = err?.cause?.code || err?.code || ''
+        const isConnRefused =
+          causeCode === 'ECONNREFUSED' ||
+          (typeof err.message === 'string' && err.message.toLowerCase().includes('fetch failed')) ||
+          (typeof err.message === 'string' && (err.message.toLowerCase().includes('connect') || err.message.toLowerCase().includes('econnrefused')))
+
+        if (isConnRefused) {
+          onStatusUpdate?.('❌ Local LLM unreachable (ECONNREFUSED). Attempting GitHub Copilot fallback...')
+
+          try {
+            return await this.generateCopilotResponse({ ...request, provider: 'github-copilot' }, onStatusUpdate)
+          } catch (copilotErr) {
+            console.error('Copilot fallback failed:', copilotErr)
+            // Re-throw original LLM error so the caller sees original cause
+            throw err
+          }
+        }
+
+        // Not a connection refusal - rethrow
+        throw err
+      }
 
       // Retry with stricter prompt if needed
       let retryCount = 0
@@ -752,7 +803,7 @@ Return ONLY this JSON structure with NO explanations:
       let jsonStr = content.trim();
       
       // Remove any text before JSON
-      const jsonStartMatch = jsonStr.match(/\{[\s\S]*\}/);
+      const jsonStartMatch = jsonStr.match(/{[\s\S]*}/);
       if (jsonStartMatch) {
         jsonStr = jsonStartMatch[0];
       }
@@ -902,3 +953,4 @@ Return ONLY this JSON structure with NO explanations:
     return result.content
   }
 }
+
