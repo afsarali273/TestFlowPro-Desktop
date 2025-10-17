@@ -14,8 +14,15 @@ export async function POST(request: NextRequest) {
 
     const startTime = Date.now();
     
+    // Clean and normalize the curl command
+    let cleanCommand = curlCommand
+      .replace(/\\\n/g, ' ')  // Remove line continuations
+      .replace(/\s+/g, ' ')    // Normalize whitespace
+      .replace(/'/g, '"')      // Replace single quotes with double quotes
+      .trim();
+    
     // Add timeout and format options to curl command
-    const enhancedCurl = `${curlCommand} --max-time 30 --silent --show-error --write-out "\\n%{http_code}\\n%{time_total}"`;
+    const enhancedCurl = `${cleanCommand} --max-time 30 --silent --show-error --write-out "\\n%{http_code}\\n%{time_total}"`;
     
     const { stdout, stderr } = await execAsync(enhancedCurl);
     const endTime = Date.now();
@@ -51,8 +58,16 @@ export async function POST(request: NextRequest) {
     
   } catch (error: any) {
     console.error('cURL Test Error:', error);
+    
+    let errorMessage = 'Failed to execute cURL command';
+    if (error.message?.includes('URL rejected: Bad hostname')) {
+      errorMessage = 'Invalid URL format. Please check the URL syntax.';
+    } else if (error.message?.includes('Command failed')) {
+      errorMessage = 'cURL command execution failed. Please check the command syntax.';
+    }
+    
     return NextResponse.json({ 
-      error: 'Failed to execute cURL command',
+      error: errorMessage,
       details: error.message 
     }, { status: 500 });
   }

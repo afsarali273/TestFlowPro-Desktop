@@ -5,6 +5,11 @@ export const metadata: Metadata = {
   title: 'TestFlow Pro',
   description: 'Advanced Test Automation Generator',
   generator: '',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({

@@ -190,32 +190,32 @@ export const CurlImportModal: React.FC<CurlImportModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl max-h-[95vh] flex flex-col bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 border-0 shadow-2xl" style={{zIndex: 9999}}>
-        <DialogHeader className="pb-6 border-b border-slate-200/50">
-          <DialogTitle className="flex items-center gap-3 text-2xl font-bold">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-              <Zap className="h-6 w-6 text-white" />
+      <DialogContent className="max-w-6xl max-h-[95vh] flex flex-col bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 border-0 shadow-2xl" style={{zIndex: 9999}}>
+        <DialogHeader className="pb-4 border-b border-slate-200/50">
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+              <Zap className="h-5 w-5 text-white" />
             </div>
             <div>
               <div className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                 cURL to TestFlow Pro
               </div>
-              <div className="text-sm font-normal text-slate-600 mt-1">
+              <div className="text-xs font-normal text-slate-600 mt-1">
                 Convert cURL commands to test suites with live testing
               </div>
             </div>
           </DialogTitle>
         </DialogHeader>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 overflow-hidden pt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 overflow-hidden pt-4">
           {/* Input Section */}
-          <div className="flex flex-col space-y-6 overflow-y-auto pr-2">
-            <div className="space-y-3">
+          <div className="flex flex-col space-y-4 overflow-y-auto pr-2">
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center">
-                  <Copy className="h-4 w-4 text-emerald-600" />
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center">
+                  <Copy className="h-3 w-3 text-emerald-600" />
                 </div>
-                <label className="text-lg font-semibold text-slate-800">
+                <label className="text-base font-semibold text-slate-800">
                   cURL Command Input
                 </label>
               </div>
@@ -223,9 +223,9 @@ export const CurlImportModal: React.FC<CurlImportModalProps> = ({
                 value={curlInput}
                 onChange={(e) => setCurlInput(e.target.value)}
                 placeholder="curl -X GET 'https://api.example.com/users' -H 'Authorization: Bearer token' -H 'Content-Type: application/json'"
-                className="h-40 font-mono text-sm bg-white/70 backdrop-blur-sm border-slate-200 shadow-lg focus:shadow-xl focus:bg-white transition-all duration-300 resize-none"
+                className="h-32 font-mono text-xs bg-white/70 backdrop-blur-sm border-slate-200 shadow-lg focus:shadow-xl focus:bg-white transition-all duration-300 resize-none"
               />
-              <div className="text-xs text-slate-500 flex items-center gap-2">
+              <div className="text-xs text-slate-500 flex items-center gap-1">
                 <Shield className="h-3 w-3" />
                 <span>Paste your cURL command from browser dev tools, Postman, or any API client</span>
               </div>
@@ -234,29 +234,29 @@ export const CurlImportModal: React.FC<CurlImportModalProps> = ({
             <div className="space-y-4">
               {/* Test Results */}
               {testResult && (
-                <div className="p-6 bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/50 shadow-lg space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
-                      <Activity className="h-4 w-4 text-blue-600" />
+                <div className="p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/50 shadow-lg space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                      <Activity className="h-3 w-3 text-blue-600" />
                     </div>
-                    <h4 className="font-semibold text-lg text-slate-800">Live API Response</h4>
+                    <h4 className="font-semibold text-base text-slate-800">Live API Response</h4>
                   </div>
                   {testResult.error ? (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                       <div className="flex items-center gap-2 text-red-700">
-                        <AlertCircle className="h-4 w-4" />
-                        <span className="font-medium">Error</span>
+                        <AlertCircle className="h-3 w-3" />
+                        <span className="font-medium text-sm">Error</span>
                       </div>
-                      <div className="text-red-600 text-sm mt-2">{testResult.error}</div>
+                      <div className="text-red-600 text-xs mt-1">{testResult.error}</div>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                      <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
                         <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${testResult.status < 400 ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                          <span className="font-medium">Status: <span className={testResult.status < 400 ? 'text-emerald-600' : 'text-red-600'}>{testResult.status}</span></span>
+                          <div className={`w-2 h-2 rounded-full ${testResult.status < 400 ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                          <span className="font-medium text-sm">Status: <span className={testResult.status < 400 ? 'text-emerald-600' : 'text-red-600'}>{testResult.status}</span></span>
                         </div>
-                        <span className="text-slate-600 font-medium">⚡ {testResult.time}ms</span>
+                        <span className="text-slate-600 font-medium text-sm">⚡ {testResult.time}ms</span>
                       </div>
                       
                       {testResult.data && (
@@ -337,28 +337,28 @@ export const CurlImportModal: React.FC<CurlImportModalProps> = ({
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <Button 
                   variant="outline" 
                   onClick={handleTestCurl} 
                   disabled={isTestingCurl || !curlInput.trim()}
-                  className="flex-1 h-11 bg-white/70 backdrop-blur-sm border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 hover:scale-105 transition-all duration-300"
+                  className="flex-1 h-9 text-sm bg-white/70 backdrop-blur-sm border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 hover:scale-105 transition-all duration-300"
                 >
-                  <Play className="h-4 w-4 mr-2" />
+                  <Play className="h-3 w-3 mr-1" />
                   {isTestingCurl ? 'Testing...' : 'Test Live'}
                 </Button>
                 <Button 
                   onClick={handleParse} 
                   disabled={!curlInput.trim()}
-                  className="flex-1 h-11 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                  className="flex-1 h-9 text-sm bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
                 >
-                  <Zap className="h-4 w-4 mr-2" />
+                  <Zap className="h-3 w-3 mr-1" />
                   Convert to Suite
                 </Button>
                 <Button 
                   variant="outline" 
                   onClick={handleReset}
-                  className="h-11 px-4 bg-white/70 backdrop-blur-sm border-slate-200 hover:bg-slate-50 hover:scale-105 transition-all duration-300"
+                  className="h-9 px-3 text-sm bg-white/70 backdrop-blur-sm border-slate-200 hover:bg-slate-50 hover:scale-105 transition-all duration-300"
                 >
                   Reset
                 </Button>
@@ -520,13 +520,13 @@ export const CurlImportModal: React.FC<CurlImportModalProps> = ({
           </div>
 
           {/* Output Section */}
-          <div className="flex flex-col space-y-6 overflow-y-auto pr-2">
+          <div className="flex flex-col space-y-4 overflow-y-auto pr-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                  <Code className="h-4 w-4 text-slate-600" />
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                  <Code className="h-3 w-3 text-slate-600" />
                 </div>
-                <label className="text-lg font-semibold text-slate-800">
+                <label className="text-base font-semibold text-slate-800">
                   Generated Test Suite
                 </label>
               </div>
@@ -536,9 +536,9 @@ export const CurlImportModal: React.FC<CurlImportModalProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={handleCopy}
-                    className="flex items-center gap-2 h-10 bg-white/70 backdrop-blur-sm border-slate-200 hover:bg-white hover:scale-105 transition-all duration-300"
+                    className="flex items-center gap-1 h-8 text-xs bg-white/70 backdrop-blur-sm border-slate-200 hover:bg-white hover:scale-105 transition-all duration-300"
                   >
-                    <Copy className="h-4 w-4" />
+                    <Copy className="h-3 w-3" />
                     Copy
                   </Button>
                   <Button
