@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Play, Square, CheckCircle, XCircle, Clock, Terminal, AlertCircle, Settings, Loader2, BarChart3 } from "lucide-react"
+import { Play, Square, CheckCircle, XCircle, Clock, Terminal, AlertCircle, Settings, Loader2, BarChart3, ChevronUp, ChevronDown, Expand } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface SuiteRunnerModalProps {
@@ -34,8 +34,10 @@ export function SuiteRunnerModal({ suite, target, isOpen, onClose }: SuiteRunner
     stats?: { passed: number; failed: number; total: number }
   }>({ success: false, completed: false })
   const [frameworkPath, setFrameworkPath] = useState<string>("")
+  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false)
   const abortControllerRef = useRef<AbortController | null>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
+  const expandedLogsEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // Load framework path from localStorage
@@ -49,6 +51,9 @@ export function SuiteRunnerModal({ suite, target, isOpen, onClose }: SuiteRunner
     // Auto-scroll to bottom when new logs are added
     if (logsEndRef.current) {
       logsEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+    if (expandedLogsEndRef.current) {
+      expandedLogsEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
   }, [logs])
 
@@ -237,8 +242,9 @@ export function SuiteRunnerModal({ suite, target, isOpen, onClose }: SuiteRunner
   }
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className="h-[95vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Terminal className="h-5 w-5" />
@@ -369,8 +375,8 @@ export function SuiteRunnerModal({ suite, target, isOpen, onClose }: SuiteRunner
 
           {/* Suite Info */}
           <Card className="flex-shrink-0">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <CardContent className="p-3">
+              <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <span className="font-medium text-gray-600">{target ? 'Target:' : 'Suite Name:'}</span>
                   <span className="ml-2">{target || suite?.suiteName || suite?._executionTarget?.suiteName || 'Unnamed Suite'}</span>
@@ -392,16 +398,26 @@ export function SuiteRunnerModal({ suite, target, isOpen, onClose }: SuiteRunner
                   </div>
                 )}
               </div>
-
-
             </CardContent>
           </Card>
 
           {/* Execution Logs - This is the main scrollable area */}
           <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <CardHeader className="pb-3 flex-shrink-0">
-              <CardTitle className="text-base">Execution Logs</CardTitle>
-              <CardDescription>Real-time output from the test execution</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Execution Logs</CardTitle>
+                  <CardDescription>Real-time output from the test execution</CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsLogsModalOpen(true)}
+                  className="h-8 px-2"
+                >
+                  <Expand className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
               <div className="h-full bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 border-t">
@@ -438,5 +454,51 @@ export function SuiteRunnerModal({ suite, target, isOpen, onClose }: SuiteRunner
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Expanded Logs Modal */}
+    <Dialog open={isLogsModalOpen} onOpenChange={setIsLogsModalOpen}>
+      <DialogContent className="w-[95vw] h-[95vh] max-w-none flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            <Terminal className="h-5 w-5" />
+            Execution Logs - {target ? target.split(' > ')[0]?.split(':')[1] || 'Test Case' : suite?.suiteName || suite?._executionTarget?.suiteName || 'Unnamed Suite'}
+          </DialogTitle>
+          <DialogDescription>Full screen view of real-time test execution logs</DialogDescription>
+        </DialogHeader>
+        
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="h-full bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 rounded-lg">
+            <ScrollArea className="h-full">
+              <div className="p-6 space-y-2 font-mono text-sm min-h-full">
+                {logs.length === 0 ? (
+                  <div className="text-center py-16 text-gray-400">
+                    <Terminal className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg">No logs yet. Click "Run Suite" to start execution.</p>
+                    <p className="text-sm mt-2 opacity-75">Console output will appear here in real-time</p>
+                  </div>
+                ) : (
+                  logs.map((log, index) => (
+                    <div
+                      key={index}
+                      className="flex items-start gap-4 py-2 px-3 rounded hover:bg-gray-800/50 transition-colors duration-150"
+                    >
+                      <span className="text-sm text-gray-500 w-24 flex-shrink-0 font-mono">{log.timestamp}</span>
+                      {getLogIcon(log.type)}
+                      <span
+                        className={`flex-1 whitespace-pre-wrap break-words ${getLogTextColor(log.type)} leading-relaxed text-sm`}
+                      >
+                        {log.content}
+                      </span>
+                    </div>
+                  ))
+                )}
+                <div ref={expandedLogsEndRef} />
+              </div>
+            </ScrollArea>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

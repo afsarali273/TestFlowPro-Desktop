@@ -219,7 +219,7 @@ export function RunAllSuitesModal({ isOpen, onClose }: RunAllSuitesModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className="h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Terminal className="h-5 w-5" />

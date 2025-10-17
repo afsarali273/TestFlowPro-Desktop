@@ -465,9 +465,9 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
             </div>
         )}
 
-        <div className="max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto p-6 xl:p-8 2xl:p-10">
+        <div className="max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto p-3 xl:p-4 2xl:p-6">
           {/* Header Section */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 mb-8">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-xl border border-white/20 p-3 mb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Button 
@@ -480,7 +480,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                 </Button>
                 <div className="h-8 w-px bg-slate-200"></div>
                 <div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
                     Test Suite Editor
                   </h1>
                   <p className="text-slate-600 mt-1">
@@ -537,25 +537,25 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
             </div>
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
             <TabsList className="bg-white/90 backdrop-blur-sm shadow-lg border border-white/20 rounded-xl p-1">
               <TabsTrigger 
                 value="general" 
-                className="data-[state=active]:bg-white data-[state=active]:shadow-md rounded-lg px-6 py-3 font-medium transition-all duration-200"
+                className="data-[state=active]:bg-white data-[state=active]:shadow-md rounded-lg px-4 py-2 font-medium transition-all duration-200"
               >
                 <Globe className="h-4 w-4 mr-2" />
                 General
               </TabsTrigger>
               <TabsTrigger 
                 value="testcases" 
-                className="data-[state=active]:bg-white data-[state=active]:shadow-md rounded-lg px-6 py-3 font-medium transition-all duration-200"
+                className="data-[state=active]:bg-white data-[state=active]:shadow-md rounded-lg px-4 py-2 font-medium transition-all duration-200"
               >
                 <Code className="h-4 w-4 mr-2" />
                 Test Cases ({editedSuite.testCases.length})
               </TabsTrigger>
               <TabsTrigger 
                 value="json" 
-                className="data-[state=active]:bg-white data-[state=active]:shadow-md rounded-lg px-6 py-3 font-medium transition-all duration-200"
+                className="data-[state=active]:bg-white data-[state=active]:shadow-md rounded-lg px-4 py-2 font-medium transition-all duration-200"
               >
                 <TreePine className="h-4 w-4 mr-2" />
                 JSON View
@@ -565,7 +565,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
             <TabsContent value="general">
               <Card className="bg-white/90 backdrop-blur-sm shadow-xl border border-white/20 rounded-2xl overflow-hidden">
                 <CardHeader className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border-b border-white/20">
-                  <CardTitle className="flex items-center gap-3 text-xl">
+                  <CardTitle className="flex items-center gap-3 text-lg">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
                       <Globe className="h-5 w-5 text-white" />
                     </div>
@@ -575,8 +575,8 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                     Configure the essential settings and metadata for your test suite
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="p-8 space-y-8">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <CardContent className="p-4 space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="suiteName" className="text-sm font-semibold text-slate-700 mb-2 block">
                         Suite Name *
@@ -603,7 +603,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="status" className="text-sm font-semibold text-slate-700 mb-2 block">
                         Execution Status
@@ -640,7 +640,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                           value={editedSuite.baseUrl || ""}
                           onChange={(e) => handleSuiteChange("baseUrl", e.target.value)}
                           placeholder="https://api.example.com/v1"
-                          className="h-12 pl-12 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-white/50 backdrop-blur-sm transition-all duration-200"
+                          className="h-10 pl-12 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg bg-white/50 backdrop-blur-sm transition-all duration-200"
                       />
                     </div>
                     <p className="text-xs text-slate-500 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
@@ -649,10 +649,10 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                   </div>
 
                   {/* Suite Type Selection */}
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <Label className="text-sm font-semibold text-slate-700">Test Suite Type</Label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <label className={`relative flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className={`relative flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                         editedSuite.type === "API" 
                           ? 'border-blue-300 bg-blue-50/50 shadow-md' 
                           : 'border-slate-200 bg-white/50 hover:border-slate-300 hover:bg-slate-50/50'
@@ -677,7 +677,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                           </div>
                         </div>
                       </label>
-                      <label className={`relative flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                      <label className={`relative flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                         editedSuite.type === "UI" 
                           ? 'border-purple-300 bg-purple-50/50 shadow-md' 
                           : 'border-slate-200 bg-white/50 hover:border-slate-300 hover:bg-slate-50/50'
@@ -705,7 +705,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                     </div>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <Label className="text-sm font-semibold text-slate-700">Tags & Labels</Label>
@@ -720,11 +720,11 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                         Add Tag
                       </Button>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {(editedSuite.tags || []).map((tag, index) => (
                           <div
                               key={index}
-                              className="flex items-center gap-4 p-5 border border-slate-200 rounded-xl bg-gradient-to-r from-white/80 to-slate-50/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
+                              className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg bg-gradient-to-r from-white/80 to-slate-50/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
                           >
                             {Object.entries(tag).map(([key, value], entryIndex) => (
                                 <div key={entryIndex} className="flex items-center gap-2 flex-1">
@@ -771,7 +771,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleRemoveTag(index)}
-                                className="h-11 px-3 border-red-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all duration-200"
+                                className="h-9 px-3 border-red-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all duration-200"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -788,13 +788,13 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                       )}
                     </div>
                   </div>
-                  <div className="flex justify-end pt-6 border-t border-slate-200">
+                  <div className="flex justify-end pt-4 border-t border-slate-200">
                     <Button
                         onClick={() => {
                           triggerAutoSave()
                           setActiveTab("testcases")
                         }}
-                        className="h-12 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl font-medium"
+                        className="h-10 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200 rounded-lg font-medium"
                     >
                       Continue to Test Cases
                       <ArrowRight className="h-4 w-4 ml-3" />
@@ -805,7 +805,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
             </TabsContent>
 
             <TabsContent value="testcases">
-              <div className="space-y-6">
+              <div className="space-y-3">
                 <Card className="bg-white/90 backdrop-blur-sm shadow-xl border border-white/20 rounded-2xl overflow-hidden">
                   <CardHeader className="bg-gradient-to-r from-indigo-50/50 to-purple-50/50 border-b border-white/20">
                     <div className="flex justify-between items-center">
@@ -814,7 +814,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                           <Code className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                          <CardTitle className="text-xl">Test Cases Management</CardTitle>
+                          <CardTitle className="text-lg">Test Cases Management</CardTitle>
                           <CardDescription className="text-slate-600">
                             Create and manage individual test cases for your suite
                           </CardDescription>
@@ -842,9 +842,9 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                     </div>
                   </CardHeader>
 
-                  <CardContent className="p-6">
+                  <CardContent className="p-3">
 
-                    <div className="grid gap-4">
+                    <div className="grid gap-2">
                       {editedSuite.testCases.map((testCase, index) => (
                           <Card
                               key={index}
@@ -852,7 +852,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                                 testCase.enabled === false ? "opacity-60 border-slate-300" : ""
                               }`}
                           >
-                            <CardHeader className="pb-4">
+                            <CardHeader className="pb-2">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                   <div className="flex items-center space-x-3">
@@ -887,7 +887,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                                     )}
                                   </div>
                                   <div>
-                                    <CardTitle className={`text-lg font-semibold ${
+                                    <CardTitle className={`text-base font-semibold ${
                                       testCase.enabled === false ? 'text-slate-500' : 'text-slate-900'
                                     }`}>{testCase.name}</CardTitle>
                                     <CardDescription className="flex items-center gap-3 mt-1">
@@ -971,12 +971,12 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                   ))}
 
                       {editedSuite.testCases.length === 0 && (
-                          <div className="text-center py-16">
+                          <div className="text-center py-8">
                             <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl mb-6 shadow-lg">
                               <Plus className="h-10 w-10 text-indigo-600" />
                             </div>
-                            <h3 className="text-lg font-semibold text-slate-900 mb-2">No test cases yet</h3>
-                            <p className="text-slate-500 mb-8 max-w-md mx-auto">Start building your test suite by creating your first test case. You can add API endpoints, UI interactions, or use our quick builder.</p>
+                            <h3 className="text-base font-semibold text-slate-900 mb-2">No test cases yet</h3>
+                            <p className="text-slate-500 mb-4 max-w-md mx-auto">Start building your test suite by creating your first test case. You can add API endpoints, UI interactions, or use our quick builder.</p>
                             <div className="flex gap-4 justify-center">
                               {editedSuite.type === "API" && (
                                 <Button
@@ -1013,7 +1013,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                         <Code className="h-5 w-5 text-white" />
                       </div>
                       <div>
-                        <CardTitle className="text-xl">JSON Structure Editor</CardTitle>
+                        <CardTitle className="text-lg">JSON Structure Editor</CardTitle>
                         <CardDescription className="text-slate-600">
                           Advanced JSON editing with multiple view modes and real-time validation
                         </CardDescription>
@@ -1075,9 +1075,9 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                       </div>
                   )}
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-3">
                   {jsonViewMode === "tree" && (
-                      <div className="border border-slate-200 rounded-xl p-6 bg-gradient-to-br from-slate-50/50 to-white/50 backdrop-blur-sm min-h-[500px] shadow-inner">
+                      <div className="border border-slate-200 rounded-lg p-3 bg-gradient-to-br from-slate-50/50 to-white/50 backdrop-blur-sm min-h-[350px] shadow-inner">
                         <ReactJson
                             src={editedSuite}
                             theme="rjv-default"
@@ -1104,7 +1104,7 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                   {jsonViewMode === "code" && (
                       <div className="border border-slate-200 rounded-xl overflow-hidden shadow-inner">
                         <MonacoEditor
-                            height="500px"
+                            height="350px"
                             language="json"
                             theme="vs"
                             value={JSON.stringify(editedSuite, null, 2)}
@@ -1150,12 +1150,12 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                               setJsonError(`Invalid JSON: ${error.message}`)
                             }
                           }}
-                          className="font-mono text-sm min-h-[500px] border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-gradient-to-br from-slate-50/50 to-white/50 backdrop-blur-sm shadow-inner transition-all duration-200"
+                          className="font-mono text-sm min-h-[350px] border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg bg-gradient-to-br from-slate-50/50 to-white/50 backdrop-blur-sm shadow-inner transition-all duration-200"
                           placeholder="Edit JSON structure directly..."
                       />
                   )}
 
-                  <div className="mt-6 p-5 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm border border-blue-200/50 rounded-xl">
+                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm border border-blue-200/50 rounded-xl">
                     <div className="flex items-start gap-4">
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
                         <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -1167,17 +1167,17 @@ export function TestSuiteEditor({ suite, onSave, onCancel, onViewTestCase }: Tes
                         </svg>
                       </div>
                       <div className="text-sm text-blue-800">
-                        <p className="font-semibold mb-3 text-blue-900">JSON Editor Guide</p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                          <div className="bg-white/60 p-3 rounded-lg">
+                        <p className="font-semibold mb-2 text-blue-900">JSON Editor Guide</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                          <div className="bg-white/60 p-2 rounded-lg">
                             <p className="font-medium text-blue-900 mb-1">🌳 Tree View</p>
                             <p className="text-blue-700">Interactive tree structure with inline editing, expand/collapse nodes, and property management</p>
                           </div>
-                          <div className="bg-white/60 p-3 rounded-lg">
+                          <div className="bg-white/60 p-2 rounded-lg">
                             <p className="font-medium text-blue-900 mb-1">💻 Code Editor</p>
                             <p className="text-blue-700">Full-featured Monaco editor with syntax highlighting, auto-completion, and error detection</p>
                           </div>
-                          <div className="bg-white/60 p-3 rounded-lg">
+                          <div className="bg-white/60 p-2 rounded-lg">
                             <p className="font-medium text-blue-900 mb-1">📝 Raw Text</p>
                             <p className="text-blue-700">Direct JSON editing with real-time validation for quick modifications and bulk operations</p>
                           </div>

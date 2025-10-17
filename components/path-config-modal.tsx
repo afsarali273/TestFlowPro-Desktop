@@ -75,15 +75,15 @@ export function PathConfigModal({ onSave, onCancel, currentPath = "" }: PathConf
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
+      <Card className="w-[95vw] max-h-[90vh] overflow-hidden flex flex-col max-w-sm sm:w-full sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl">
+        <CardHeader className="flex-shrink-0">
           <CardTitle className="flex items-center gap-2">
             <FolderOpen className="h-5 w-5" />
             Configure Test Suite Path
           </CardTitle>
           <CardDescription>Specify the directory path where your JSON test suite files are located</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="flex-1 overflow-y-auto space-y-6">
           <div className="space-y-2">
             <Label htmlFor="path">Test Suite Directory Path</Label>
             <div className="flex gap-2">
@@ -151,6 +151,8 @@ export function PathConfigModal({ onSave, onCancel, currentPath = "" }: PathConf
             </ul>
           </div>
 
+        </CardContent>
+        <div className="flex-shrink-0 p-6 pt-0">
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={onCancel}>
               <X className="h-4 w-4 mr-2" />
@@ -164,7 +166,7 @@ export function PathConfigModal({ onSave, onCancel, currentPath = "" }: PathConf
               Save & Load
             </Button>
           </div>
-        </CardContent>
+        </div>
       </Card>
     </div>
   )

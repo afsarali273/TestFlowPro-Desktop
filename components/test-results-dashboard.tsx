@@ -900,7 +900,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
                     <BarChart3 className="h-5 w-5 text-white" />
                   </div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                     Test Analytics Dashboard
                   </h1>
                 </div>
@@ -980,7 +980,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
               <CardContent className="p-3 relative">
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-indigo-600" />
-                  <div className="text-lg font-bold text-indigo-800">
+                  <div className="text-base font-bold text-indigo-800">
                     {overallStats.totalRuns}
                   </div>
                 </div>
@@ -992,7 +992,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
               <CardContent className="p-3 relative">
                 <div className="flex items-center gap-2">
                   <Target className="h-4 w-4 text-emerald-600" />
-                  <div className="text-lg font-bold text-emerald-800">
+                  <div className="text-base font-bold text-emerald-800">
                     {calculateSuccessRate(overallStats.totalPassed, overallStats.totalTests)}%
                   </div>
                 </div>
@@ -1004,7 +1004,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
               <CardContent className="p-3 relative">
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-blue-600" />
-                  <div className="text-lg font-bold text-blue-800">
+                  <div className="text-base font-bold text-blue-800">
                     {overallStats.totalTests}
                   </div>
                 </div>
@@ -1016,7 +1016,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
               <CardContent className="p-3 relative">
                 <div className="flex items-center gap-2">
                   <Timer className="h-4 w-4 text-purple-600" />
-                  <div className="text-lg font-bold text-purple-800">
+                  <div className="text-base font-bold text-purple-800">
                     {formatExecutionTime(overallStats.totalExecutionTime / Math.max(overallStats.totalSuites, 1))}
                   </div>
                 </div>
@@ -1036,7 +1036,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
                 <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
                   <Search className="h-3 w-3 text-white" />
                 </div>
-                <h3 className="text-base font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                <h3 className="text-sm font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                   Test Runs Explorer
                 </h3>
               </div>
@@ -1203,7 +1203,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
                         <Activity className="h-5 w-5 text-white" />
                       </div>
                       <div>
-                        <h2 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                        <h2 className="text-lg font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                           {selectedRun.runName} - All Test Results
                         </h2>
                         <div className="text-sm text-slate-600">
@@ -1362,7 +1362,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
                         <FileText className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                        <h2 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                           {selectedResult.summary.suiteName}
                         </h2>
                         <div className="text-sm text-slate-600 mt-1">
@@ -1397,7 +1397,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
                         <Target className="h-3 w-3 text-emerald-600" />
                         <span className="text-xs font-medium text-slate-600">Success Rate</span>
                       </div>
-                      <div className="text-lg font-bold text-emerald-600">
+                      <div className="text-base font-bold text-emerald-600">
                         {calculateSuccessRate(selectedResult.summary.passed, selectedResult.summary.totalDataSets)}%
                       </div>
                     </div>
@@ -1406,7 +1406,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
                         <Zap className="h-3 w-3 text-blue-600" />
                         <span className="text-xs font-medium text-slate-600">Total Tests</span>
                       </div>
-                      <div className="text-lg font-bold text-slate-800">
+                      <div className="text-base font-bold text-slate-800">
                         {selectedResult.summary.totalDataSets}
                       </div>
                     </div>
@@ -1415,7 +1415,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
                         <CheckCircle className="h-3 w-3 text-indigo-600" />
                         <span className="text-xs font-medium text-slate-600">Assertions</span>
                       </div>
-                      <div className="text-lg font-bold text-indigo-600">
+                      <div className="text-base font-bold text-indigo-600">
                         {selectedResult.summary.totalAssertionsPassed}
                       </div>
                     </div>
@@ -1424,7 +1424,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
                         <Timer className="h-3 w-3 text-purple-600" />
                         <span className="text-xs font-medium text-slate-600">Duration</span>
                       </div>
-                      <div className="text-lg font-bold text-purple-600">
+                      <div className="text-base font-bold text-purple-600">
                         {formatExecutionTime(selectedResult.summary.executionTimeMs)}
                       </div>
                     </div>
@@ -1490,7 +1490,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
                                       )}
                                     </div>
                                     <div>
-                                      <div className="font-bold text-base text-slate-900 group-hover:text-slate-700 transition-colors duration-300">
+                                      <div className="font-bold text-sm text-slate-900 group-hover:text-slate-700 transition-colors duration-300">
                                         {result.testCase}
                                       </div>
                                       <div className="text-sm text-slate-600 font-medium">
@@ -1667,7 +1667,7 @@ export function TestResultsDashboard({ onClose }: TestResultsDashboardProps) {
                   <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center shadow-2xl">
                     <BarChart3 className="h-12 w-12 text-indigo-600" />
                   </div>
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
+                  <h3 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
                     Select a Test Suite
                   </h3>
                   <p className="text-slate-600 max-w-md mx-auto leading-relaxed">

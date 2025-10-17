@@ -360,7 +360,7 @@ export function TestCasesModal({ suite, isOpen, onClose, onRunTestCase }: TestCa
 
   return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-7xl max-h-[85vh] bg-white/95 backdrop-blur-xl border-0 shadow-2xl">
+        <DialogContent className="max-h-[90vh] bg-white/95 backdrop-blur-xl border-0 shadow-2xl">
           <DialogHeader className="pb-6 border-b border-slate-200/50 bg-gradient-to-r from-slate-50/50 to-blue-50/50 -m-6 mb-6 p-6 rounded-t-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -376,7 +376,7 @@ export function TestCasesModal({ suite, isOpen, onClose, onRunTestCase }: TestCa
                   )}
                 </div>
                 <div>
-                  <DialogTitle className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                  <DialogTitle className="text-lg font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                     {suite.suiteName}
                   </DialogTitle>
                   <div className="flex items-center gap-3 mt-1">
@@ -429,7 +429,7 @@ export function TestCasesModal({ suite, isOpen, onClose, onRunTestCase }: TestCa
                                 )}
                               </div>
                               <div>
-                                <CardTitle className="text-lg font-semibold text-slate-900 group-hover:text-slate-700 transition-colors duration-200 flex items-center gap-2">
+                                <CardTitle className="text-base font-semibold text-slate-900 group-hover:text-slate-700 transition-colors duration-200 flex items-center gap-2">
                                   {getStatusIcon(testCase.status)}
                                   {testCase.name}
                                   {testCase.type && (
@@ -478,7 +478,7 @@ export function TestCasesModal({ suite, isOpen, onClose, onRunTestCase }: TestCa
                                   <div className="w-6 h-6 rounded-lg bg-violet-100 flex items-center justify-center">
                                     <Play className="h-3 w-3 text-violet-600" />
                                   </div>
-                                  <h4 className="font-semibold text-sm text-slate-700">
+                                  <h4 className="font-semibold text-xs text-slate-700">
                                     Test Steps ({testCase.testSteps.length})
                                   </h4>
                                 </div>
@@ -539,7 +539,7 @@ export function TestCasesModal({ suite, isOpen, onClose, onRunTestCase }: TestCa
                                   <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center">
                                     <Database className="h-3 w-3 text-slate-600" />
                                   </div>
-                                  <h4 className="font-semibold text-sm text-slate-700">
+                                  <h4 className="font-semibold text-xs text-slate-700">
                                     Test Data ({testCase.testData.length})
                                     {testCase.parameters?.enabled && testCase.parameters.dataSource.data && (
                                       <span className="ml-2 text-xs text-blue-600">
@@ -553,7 +553,7 @@ export function TestCasesModal({ suite, isOpen, onClose, onRunTestCase }: TestCa
                                       <CardContent className="p-4">
                                         <div className="space-y-4">
                                           <div className="flex items-center justify-between">
-                                            <h5 className="font-medium text-sm">{testData.name}</h5>
+                                            <h5 className="font-medium text-xs">{testData.name}</h5>
                                             <div className="flex items-center gap-2">
                                               <Badge className={getMethodColor(testData.method)}>{testData.method}</Badge>
                                               <code className="text-xs bg-gray-200 px-2 py-1 rounded break-all max-w-xs">

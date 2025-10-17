@@ -587,11 +587,11 @@ export default function APITestFramework() {
                     <Zap className="h-7 w-7 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                       TestFlow Pro
                     </h1>
                     <div className="flex items-center gap-3 mt-1">
-                      <p className="text-slate-600 font-medium">Advanced Test Automation Platform</p>
+                      <p className="text-slate-600 font-medium text-xs">Advanced Test Automation Platform</p>
                       {testSuitePath && (
                           <Badge variant="outline" className="text-xs bg-blue-100/80 text-blue-700 border-blue-200/50 backdrop-blur-sm">
                             📁 {testSuitePath.split(/[\/\\]/).pop() || testSuitePath}
@@ -796,8 +796,8 @@ export default function APITestFramework() {
                 <div className="w-80 xl:w-96 2xl:w-[400px] bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl">
                   <div className="p-4 border-b border-slate-200/50 bg-gradient-to-r from-slate-50 to-blue-50">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center shadow-lg">
+                      <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center shadow-lg">
                           {sidebarViewMode === 'application' ? (
                             <Folder className="h-3 w-3 text-white" />
                           ) : (
@@ -886,7 +886,7 @@ export default function APITestFramework() {
                                         }`} />
                                       </div>
                                       <div className="min-w-0 flex-1">
-                                        <div className={`font-semibold text-sm transition-colors duration-300 mb-1 ${
+                                        <div className={`font-medium text-xs transition-colors duration-300 mb-1 ${
                                           isSelected ? 'text-slate-800' : 'text-slate-900 group-hover:text-slate-700'
                                         }`}>{appName}</div>
                                         <div className="flex items-center gap-2 flex-wrap">
@@ -954,7 +954,7 @@ export default function APITestFramework() {
                                               )}
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                              <div className="text-sm font-medium text-slate-900 truncate group-hover/suite:text-slate-800 transition-colors duration-300">
+                                              <div className="text-xs font-normal text-slate-900 truncate group-hover/suite:text-slate-800 transition-colors duration-300">
                                                 {suite.suiteName}
                                               </div>
                                               <div className="text-xs text-slate-500 group-hover/suite:text-slate-600 transition-colors duration-300">
@@ -1023,7 +1023,7 @@ export default function APITestFramework() {
                       {/* Title Row - Full Width */}
                       <div className="mb-3">
                         <div className="flex items-center justify-between mb-2">
-                          <CardTitle className="text-lg font-semibold text-slate-900 group-hover:text-slate-700 transition-colors duration-200 flex-1">
+                          <CardTitle className="text-sm font-semibold text-slate-900 group-hover:text-slate-700 transition-colors duration-200 flex-1">
                             {suite.suiteName}
                           </CardTitle>
                           <Badge className={`${getStatusBadge(suite.status || "Not Started")} font-medium px-3 py-1 flex-shrink-0`}>
@@ -1296,7 +1296,7 @@ export default function APITestFramework() {
                   <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100/80 to-indigo-100/80 backdrop-blur-sm rounded-2xl mb-6 shadow-xl">
                     <FileText className="h-10 w-10 text-blue-600" />
                   </div>
-                  <h3 className="text-xl font-semibold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
+                  <h3 className="text-base font-semibold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
                     {searchTerm ? "No matching test suites" : "No test suites found"}
                   </h3>
                   <p className="text-slate-600 mb-8 max-w-md mx-auto">

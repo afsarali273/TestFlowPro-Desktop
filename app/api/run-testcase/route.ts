@@ -28,9 +28,17 @@ export async function POST(request: NextRequest) {
       start(controller) {
         const encoder = new TextEncoder();
         
+        let isControllerClosed = false;
+        
         const sendEvent = (type: string, data: any) => {
-          const message = `data: ${JSON.stringify({ type, ...data })}\n\n`;
-          controller.enqueue(encoder.encode(message));
+          if (isControllerClosed) return;
+          try {
+            const message = `data: ${JSON.stringify({ type, ...data })}\n\n`;
+            controller.enqueue(encoder.encode(message));
+          } catch (error) {
+            console.error('Error sending event:', error);
+            isControllerClosed = true;
+          }
         };
 
         // Send initial command info
@@ -54,7 +62,9 @@ export async function POST(request: NextRequest) {
 
         const child = spawn('npx', args, {
           cwd: backendPath,
-          stdio: ['pipe', 'pipe', 'pipe']
+          stdio: ['pipe', 'pipe', 'pipe'],
+          shell: true,
+          env: { ...process.env, PATH: process.env.PATH }
         });
 
         let outputBuffer = '';
@@ -96,6 +106,8 @@ export async function POST(request: NextRequest) {
         });
 
         child.on('close', (code) => {
+          if (isControllerClosed) return;
+          
           // Parse final stats from complete output buffer
           let stats = null;
           try {
@@ -119,14 +131,20 @@ export async function POST(request: NextRequest) {
             stats: stats,
             message: code === 0 ? 'Test case executed successfully' : 'Test case execution failed'
           });
+          
+          isControllerClosed = true;
           controller.close();
         });
 
         child.on('error', (error) => {
+          if (isControllerClosed) return;
+          
           sendEvent('error', {
             error: error.message,
             message: 'Failed to start test case execution'
           });
+          
+          isControllerClosed = true;
           controller.close();
         });
       },
