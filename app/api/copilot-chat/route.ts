@@ -125,6 +125,21 @@ export async function POST(request: NextRequest) {
 
 async function getCopilotToken(): Promise<string> {
   try {
+    // Try to get token from GitHub Copilot apps.json first
+    const response = await fetch('http://localhost:3000/api/github-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getValidToken' })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.token) {
+        return data.token;
+      }
+    }
+    
+    // Fallback to local token file
     if (!fs.existsSync(tokenFile)) {
       throw new Error('GitHub token not found. Please authenticate first.');
     }

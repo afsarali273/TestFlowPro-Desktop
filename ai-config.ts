@@ -26,7 +26,7 @@ export const AI_CONFIG: AIConfig = {
   },
   github: {
     baseUrl: 'https://api.githubcopilot.com',
-    model: 'gpt-4.1',
+    model: 'gpt-5 mini',
     maxTokens: 4096
   },
   defaults: {
