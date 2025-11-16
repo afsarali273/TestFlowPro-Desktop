@@ -1,5 +1,6 @@
 import { Document } from '@langchain/core/documents'
 import fs from 'fs/promises'
+import { readFileSync } from 'fs'
 import path from 'path'
 
 type ConversionType = 'api' | 'ui' | 'curl' | 'postman' | 'playwright'
@@ -107,6 +108,63 @@ export class RAGKnowledgeBase {
   static getRelevantDocuments(userInput: string): Document[] {
     const intent = this.analyzeUserIntent(userInput)
     const docs: Document[] = []
+    
+    // Load markdown files from doc/ folder
+    const docsPath = path.join(process.cwd(), 'doc')
+    const docFiles: Record<ConversionType, string[]> = {
+      'ui': [
+        'ui-playwright-knowledge-base.md',
+        'playwright-locator-mapping.md',
+        'playwright-locator-knowledge-base.md',
+        'strict-conversion-rules.md',
+        'ui-playwright-conversion-examples.json',
+        'ui-testflow-schema.json',
+        'playwright-json-examples.md',
+        'custom-steps-examples.md'
+      ],
+      'api': [
+        'api-testing-knowledge-base.md',
+        'curl-conversion-rules.md',
+        'api-testdata-format.md',
+        'api-conversion-examples.json',
+        'api-testflow-schema.json'
+      ],
+      'curl': [
+        'curl-conversion-rules.md',
+        'api-testing-knowledge-base.md',
+        'api-testdata-format.md',
+        'api-conversion-examples.json'
+      ],
+      'playwright': [
+        'ui-playwright-knowledge-base.md',
+        'playwright-locator-mapping.md',
+        'playwright-locator-knowledge-base.md',
+        'playwright-json-examples.md',
+        'ui-playwright-conversion-examples.json',
+        'strict-conversion-rules.md',
+        'custom-steps-examples.md'
+      ],
+      'postman': [
+        'postman-conversion-examples.md',
+        'api-testing-knowledge-base.md',
+        'api-testdata-format.md'
+      ]
+    }
+    
+    const relevantFiles = docFiles[intent.type] || docFiles['api']
+    
+    for (const file of relevantFiles) {
+      try {
+        const filePath = path.join(docsPath, file)
+        const content = readFileSync(filePath, 'utf-8')
+        docs.push(new Document({
+          pageContent: content,
+          metadata: { type: `${intent.type}-knowledge`, fileName: file, source: 'markdown' }
+        }))
+      } catch (err) {
+        console.warn(`Could not load ${file}`)
+      }
+    }
     
     // Add only relevant documents based on intent
     if (intent.type === 'api' || userInput.includes('curl') || userInput.includes('POST') || userInput.includes('GET')) {

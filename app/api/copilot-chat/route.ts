@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
+import { readFile } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'node:crypto';
 
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     const token = await getCopilotToken();
     console.log('✅ Token retrieved, length:', token?.length || 0);
     
-    const context = getKnowledgeBaseContext(type, message);
+    const context = await getKnowledgeBaseContext(type, message);
     
     const requestBody = {
       messages: [
@@ -156,8 +157,37 @@ async function getCopilotToken(): Promise<string> {
   }
 }
 
-function getKnowledgeBaseContext(type: string, message: string): string {
+async function getKnowledgeBaseContext(type: string, message: string): Promise<string> {
+  // Load markdown documentation from doc/ folder
+  const docsPath = path.join(process.cwd(), 'doc');
+  let markdownContent = '';
+  
+  try {
+    const docFiles = {
+      'ui': ['ui-playwright-knowledge-base.md', 'playwright-locator-mapping.md', 'strict-conversion-rules.md'],
+      'api': ['api-testing-knowledge-base.md', 'curl-conversion-rules.md', 'api-testdata-format.md'],
+      'curl': ['curl-conversion-rules.md', 'api-testing-knowledge-base.md'],
+      'swagger': ['api-testing-knowledge-base.md', 'api-testdata-format.md']
+    };
+    
+    const relevantFiles = docFiles[type as keyof typeof docFiles] || docFiles['api'];
+    
+    for (const file of relevantFiles) {
+      try {
+        const filePath = path.join(docsPath, file);
+        const content = await readFile(filePath, 'utf-8');
+        markdownContent += `\n\n=== ${file} ===\n${content}`;
+      } catch (err) {
+        console.warn(`Could not load ${file}`);
+      }
+    }
+  } catch (error) {
+    console.warn('Could not load documentation files');
+  }
+  
   const ragContext = `TestFlow Pro Framework - Complete Knowledge Base:
+
+${markdownContent}
 
 === EXACT JSON STRUCTURE ===
 {"id":"suite-id","suiteName":"Suite Name","applicationName":"App Name","type":"UI","baseUrl":"https://domain.com","testCases":[{"name":"Test Name","type":"UI","testData":[],"testSteps":[{"id":"step-1","keyword":"goto","value":"https://domain.com"},{"id":"step-2","keyword":"assertVisible","locator":{"strategy":"testId","value":"element-id"}},{"id":"step-3","keyword":"click","locator":{"strategy":"role","value":"button","options":{"name":"Submit","exact":true}}}]}]}

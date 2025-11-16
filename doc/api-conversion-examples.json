@@ -1,0 +1,286 @@
+{
+  "apiTestingOnly": true,
+  "curlToJsonExamples": [
+    {
+      "input": "curl -X GET \"https://api.example.com/users\" -H \"Authorization: Bearer token123\"",
+      "output": {
+        "method": "GET",
+        "endpoint": "/users",
+        "headers": {
+          "Authorization": "Bearer token123"
+        }
+      }
+    },
+    {
+      "input": "curl 'https://www.propertyguru.com.sg/api/consumer/recommendation?type=ldp&locale=en&listingId=24839769&maxItems=8' -H 'accept: application/json, text/plain, */*' -H 'accept-language: en-US,en;q=0.9' -b 'cookies=value' -H 'user-agent: Mozilla/5.0'",
+      "output": {
+        "id": "propertyguru-recommendation-test",
+        "suiteName": "PropertyGuru Recommendation API Test",
+        "type": "API",
+        "baseUrl": "https://www.propertyguru.com.sg",
+        "timeout": 30000,
+        "testCases": [{
+          "name": "Get Property Recommendations",
+          "type": "REST",
+          "testData": [{
+            "name": "GET Request",
+            "method": "GET",
+            "endpoint": "/api/consumer/recommendation?type=ldp&locale=en&listingId=24839769&maxItems=8",
+            "headers": {
+              "accept": "application/json, text/plain, */*",
+              "accept-language": "en-US,en;q=0.9"
+            },
+            "assertions": [
+              {"type": "statusCode", "jsonPath": "$", "expected": 200},
+              {"type": "exists", "jsonPath": "$"}
+            ]
+          }]
+        }]
+      }
+    },
+    {
+      "input": "curl -X POST \"https://api.example.com/users\" -H \"Content-Type: application/json\" -d '{\"name\": \"John Doe\", \"email\": \"john@example.com\"}'",
+      "output": {
+        "method": "POST",
+        "endpoint": "/users",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "John Doe",
+          "email": "john@example.com"
+        }
+      }
+    },
+    {
+      "input": "curl -X PUT \"https://api.example.com/users/123?active=true\" -H \"Content-Type: application/json\" -d '{\"name\": \"Jane Doe\"}'",
+      "output": {
+        "method": "PUT",
+        "endpoint": "/users/123?active=true",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "Jane Doe"
+        }
+      }
+    },
+    {
+      "input": "curl -X DELETE \"https://api.example.com/users/123\" -H \"Authorization: Bearer token123\"",
+      "output": {
+        "method": "DELETE",
+        "endpoint": "/users/123",
+        "headers": {
+          "Authorization": "Bearer token123"
+        }
+      }
+    }
+  ],
+  "naturalLanguageExamples": [
+    {
+      "input": "Get all users from the API with authorization token",
+      "output": {
+        "method": "GET",
+        "endpoint": "/users",
+        "headers": {
+          "Authorization": "Bearer {{authToken}}"
+        }
+      }
+    },
+    {
+      "input": "Create a new user with name 'John Doe' and email 'john@example.com'",
+      "output": {
+        "method": "POST",
+        "endpoint": "/users",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "John Doe",
+          "email": "john@example.com"
+        }
+      }
+    },
+    {
+      "input": "Update user ID 123 with new email and verify the response contains the updated email",
+      "output": {
+        "method": "PUT",
+        "endpoint": "/users/123",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "newemail@example.com"
+        },
+        "assertions": [
+          {
+            "type": "statusCode",
+            "expected": 200
+          },
+          {
+            "type": "equals",
+            "jsonPath": "$.email",
+            "expected": "newemail@example.com"
+          }
+        ]
+      }
+    }
+  ],
+  "postmanToJsonExamples": [
+    {
+      "input": {
+        "name": "Get User",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{token}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/users/{{userId}}",
+            "host": ["{{baseUrl}}"],
+            "path": ["users", "{{userId}}"]
+          }
+        }
+      },
+      "output": {
+        "method": "GET",
+        "endpoint": "/users/{{userId}}",
+        "headers": {
+          "Authorization": "Bearer {{token}}"
+        }
+      }
+    }
+  ],
+  "swaggerToJsonExamples": [
+    {
+      "input": {
+        "paths": {
+          "/users": {
+            "post": {
+              "summary": "Create user",
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {"type": "string"},
+                        "email": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "201": {
+                  "description": "User created"
+                }
+              }
+            }
+          }
+        }
+      },
+      "output": {
+        "method": "POST",
+        "endpoint": "/users",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "{{faker.name}}",
+          "email": "{{faker.email}}"
+        },
+        "assertions": [
+          {
+            "type": "statusCode",
+            "expected": 201
+          }
+        ]
+      }
+    }
+  ],
+  "apiAssertions": [
+    {
+      "type": "statusCode",
+      "expected": 200
+    },
+    {
+      "type": "equals",
+      "jsonPath": "$.status",
+      "expected": "success"
+    },
+    {
+      "type": "exists",
+      "jsonPath": "$.data.id"
+    },
+    {
+      "type": "contains",
+      "jsonPath": "$.message",
+      "expected": "created successfully"
+    },
+    {
+      "type": "greaterThan",
+      "jsonPath": "$.data.length",
+      "expected": 0
+    }
+  ],
+  "preprocessingFunctions": [
+    {
+      "var": "authToken",
+      "function": "custom.authToken"
+    },
+    {
+      "var": "randomEmail",
+      "function": "faker.email"
+    },
+    {
+      "var": "randomUUID",
+      "function": "faker.uuid"
+    },
+    {
+      "function": "dbQuery",
+      "args": ["SELECT id FROM users WHERE email = 'test@example.com'"],
+      "db": "userDb",
+      "mapTo": {
+        "userId": "id"
+      }
+    }
+  ],
+  "conversionRules": {
+    "httpMethods": {
+      "GET": "GET",
+      "POST": "POST", 
+      "PUT": "PUT",
+      "DELETE": "DELETE",
+      "PATCH": "PATCH"
+    },
+    "curlFlags": {
+      "-X": "method",
+      "-H": "headers",
+      "-d": "body",
+      "--data": "body",
+      "--header": "headers",
+      "-b": "cookies (ignored)",
+      "--cookie": "cookies (ignored)"
+    },
+    "ignoredHeaders": [
+      "sec-ch-ua", "sec-ch-ua-mobile", "sec-ch-ua-platform",
+      "sec-fetch-dest", "sec-fetch-mode", "sec-fetch-site",
+      "user-agent", "cookie", "referer", "cf_clearance", "__cf_bm"
+    ],
+    "timeoutHandling": {
+      "defaultTimeout": 30000,
+      "slowAPIs": ["propertyguru.com", "external-apis"],
+      "retryLogic": "Use dedicated cURL parser for complex commands"
+    },
+    "contentTypes": {
+      "application/json": "application/json",
+      "application/xml": "application/xml",
+      "text/xml": "text/xml",
+      "application/x-www-form-urlencoded": "application/x-www-form-urlencoded"
+    }
+  }
+}
