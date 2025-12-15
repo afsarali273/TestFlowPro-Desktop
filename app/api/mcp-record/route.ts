@@ -20,9 +20,12 @@ class MCPClient {
       console.log('📥 MCP Response:', data.toString())
     })
 
-    this.mcpProcess.stderr.on('data', (data) => {
-      console.log('❌ MCP Error:', data.toString())
-    })
+    // Guard stderr listener in case stderr is not available
+    if (this.mcpProcess.stderr) {
+      this.mcpProcess.stderr.on('data', (data) => {
+        console.log('❌ MCP Error:', data.toString())
+      })
+    }
 
     console.log('🔧 Initializing MCP...')
     await this.initialize()
@@ -239,8 +242,9 @@ export async function POST(request: NextRequest) {
         })
       } catch (error) {
         console.error('❌ MCP execution error:', error)
-        return NextResponse.json({ 
-          error: `MCP automation failed: ${error.message}`
+        const message = error instanceof Error ? error.message : String(error)
+        return NextResponse.json({
+          error: `MCP automation failed: ${message}`
         }, { status: 500 })
       }
     }

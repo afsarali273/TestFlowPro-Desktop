@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Copy, Save, Download, AlertCircle, Plus, FileText, Play, Shield, Activity, Search, Code, X } from 'lucide-react';
 import { SoapParser, SoapParseResult } from '@/lib/utils/soapParser';
-import { TestSuite } from '@/lib/utils/types';
+import { TestSuite } from '@/types/test-suite';
 
 interface SoapImportModalProps {
   isOpen: boolean;
@@ -249,23 +249,24 @@ export const SoapImportModal: React.FC<SoapImportModalProps> = ({
       const completeTestSuite = {
         ...parseResult.testSuite,
         status: 'Not Started',
+        type: (parseResult.testSuite.type as any) || 'API',
         ...(savePath && { filePath: savePath })
       };
 
-      // Update localStorage with new suite's baseUrl
-      if (completeTestSuite.baseUrl) {
-        localStorage.setItem('suiteBaseUrl', completeTestSuite.baseUrl);
-      } else {
-        localStorage.removeItem('suiteBaseUrl');
-      }
+       // Update localStorage with new suite's baseUrl
+       if (completeTestSuite.baseUrl) {
+         localStorage.setItem('suiteBaseUrl', completeTestSuite.baseUrl);
+       } else {
+         localStorage.removeItem('suiteBaseUrl');
+       }
 
-      onSave(completeTestSuite);
-      onClose();
-    } else if (importMode === 'existing' && onAddToExisting && selectedSuiteId) {
-      const testCase = parseResult.testSuite.testCases[0];
-      onAddToExisting(selectedSuiteId, testCase);
-      onClose();
-    }
+       onSave(completeTestSuite);
+       onClose();
+     } else if (importMode === 'existing' && onAddToExisting && selectedSuiteId) {
+       const testCase = parseResult.testSuite.testCases[0];
+       onAddToExisting(selectedSuiteId, testCase);
+       onClose();
+     }
   };
 
   const handleDownload = () => {
@@ -848,3 +849,4 @@ export const SoapImportModal: React.FC<SoapImportModalProps> = ({
     </Dialog>
   );
 };
+

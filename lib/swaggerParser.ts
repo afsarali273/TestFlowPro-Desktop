@@ -242,7 +242,7 @@ export class SwaggerParser {
       };
 
       operations.forEach(({ path, method, operation }) => {
-        const positiveTest = this.generateTestData(path, method, operation, testSuite);
+        const positiveTest = this.generateTestData(path, method, operation, swaggerSpec);
         testCase.testData.push(positiveTest);
 
         if (['post', 'put', 'patch'].includes(method.toLowerCase())) {

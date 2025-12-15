@@ -21,7 +21,16 @@ export async function POST(request: NextRequest) {
         }
 
         // Get absolute path to the backend: prefer frameworkPath from requester, otherwise derive relative to server
-        const backendPath = requestedFrameworkPath || path.resolve(process.cwd(), '../../');
+        // Require the caller to provide the frameworkPath (stored in client localStorage).
+        // Previously the code defaulted to resolving the project root which caused the server
+        // to operate on the wrong directory; now we mandate an explicit path to avoid ambiguity.
+        if (!requestedFrameworkPath) {
+            return NextResponse.json(
+                { error: 'MISSING_FRAMEWORK_PATH', message: 'frameworkPath is required in request body. Provide the absolute path to the framework (from the Framework Path modal).' },
+                { status: 400 }
+            );
+        }
+        const backendPath = requestedFrameworkPath;
         const runnerPath = path.join(backendPath, 'src/runner.ts');
 
         // If runner isn't present, return a helpful error instead of letting spawn produce ENOENT
@@ -37,14 +46,13 @@ export async function POST(request: NextRequest) {
             console.warn('Could not verify runnerPath existence', e);
         }
 
-        // Create a readable stream for Server-Sent Events
+        // childProc needs to be visible to both start and cancel handlers; declare here.
+        let childProc: any = null;
         const stream = new ReadableStream({
             start(controller) {
                 const encoder = new TextEncoder();
                 // Track whether the controller has been closed to avoid enqueueing after close
                 let streamClosed = false;
-                // closure-scoped child reference so cancel/start can both access it
-                let childProc: any = null;
 
                 const safeEnqueue = (chunk: Uint8Array) => {
                     if (streamClosed) return;
@@ -229,11 +237,31 @@ export async function POST(request: NextRequest) {
             }
         });
 
+        // If the incoming request supports AbortSignal, ensure we terminate the child process
+        // promptly when the client aborts the request (defensive: request.signal may not be present in all runtimes).
+        try {
+            const anyReq = request as any;
+            if (anyReq && anyReq.signal && typeof anyReq.signal.addEventListener === 'function') {
+                try {
+                    anyReq.signal.addEventListener('abort', () => {
+                        try {
+                            if (typeof childProc !== 'undefined' && childProc && !childProc.killed) {
+                                try { childProc.kill(); } catch (e) {}
+                            }
+                        } catch (e) {}
+                    });
+                } catch (e) {
+                    // ignore listener registration failures
+                }
+            }
+        } catch (e) {}
+
         return new Response(stream, {
             headers: {
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
+                'Content-Type': 'text/event-stream; charset=utf-8',
+                'Cache-Control': 'no-cache, no-transform',
                 'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no'
             },
         });
 

@@ -1,4 +1,4 @@
-import { TestSuite, TestCase, TestData, Assertion } from '../types';
+import { TestSuite, TestCase, TestData, Assertion } from '../../types/test-suite';
 
 export interface ParsedCurlRequest {
   method: string;
@@ -102,7 +102,7 @@ export class CurlParser {
         endpoint,
         headers: headersWithoutAuth,
         ...(parsed.body && { body: parsed.body }),
-        assertions: [{ type: 'statusCode', expected: 401 }]
+        assertions: [{ type: 'statusCode', jsonPath: '$', expected: 401 }]
       });
     }
 
@@ -129,30 +129,30 @@ export class CurlParser {
     switch (method) {
       case 'GET':
         assertions.push(
-          { type: 'statusCode', expected: 200 },
+          { type: 'statusCode', jsonPath: '$', expected: 200 },
           { type: 'exists', jsonPath: '$' }
         );
         break;
       case 'POST':
         assertions.push(
-          { type: 'statusCode', expected: 201 },
+          { type: 'statusCode', jsonPath: '$', expected: 201 },
           { type: 'exists', jsonPath: '$.id' }
         );
         break;
       case 'PUT':
       case 'PATCH':
         assertions.push(
-          { type: 'statusCode', expected: 200 }
+          { type: 'statusCode', jsonPath: '$', expected: 200 }
         );
         break;
       case 'DELETE':
         assertions.push(
-          { type: 'statusCode', expected: 204 }
+          { type: 'statusCode', jsonPath: '$', expected: 204 }
         );
         break;
       default:
         assertions.push(
-          { type: 'statusCode', expected: 200 }
+          { type: 'statusCode', jsonPath: '$', expected: 200 }
         );
     }
     

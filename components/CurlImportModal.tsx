@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Copy, Save, Download, AlertCircle, Plus, FileText, Play, Shield, Zap, Activity, Search, Code, X } from 'lucide-react';
 import { CurlParser, CurlParseResult } from '@/lib/utils/curlParser';
-import { TestSuite } from '@/lib/utils/types';
+import { TestSuite } from '@/types/test-suite';
 
 interface CurlImportModalProps {
   isOpen: boolean;
@@ -150,6 +150,7 @@ export const CurlImportModal: React.FC<CurlImportModalProps> = ({
       const completeTestSuite = {
         ...parseResult.testSuite,
         status: 'Not Started',
+        type: (parseResult.testSuite.type as any) || 'API',
         ...(savePath && { filePath: savePath })
       };
       

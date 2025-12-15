@@ -525,7 +525,7 @@ export function TestCasesModal({ suite, isOpen, onClose, onRunTestCase }: TestCa
                                           <div className="flex flex-wrap gap-1">
                                             {Object.entries(testCase.parameters.parameterMapping).map(([key, value]) => (
                                               <Badge key={key} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                                                {key} → {value}
+                                                {key} → {String(value)}
                                               </Badge>
                                             ))}
                                           </div>

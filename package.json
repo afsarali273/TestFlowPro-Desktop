@@ -7,6 +7,10 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
+    "update-deps:pnpm": "pnpm up -L",
+    "install:pnpm": "pnpm install",
+    "audit:pnpm": "pnpm audit --json || true",
+    "audit:npm": "npm audit --json || true",
     "start": "node server.js"
   },
   "dependencies": {
@@ -15,7 +19,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@faker-js/faker": "^10.0.0",
     "@hookform/resolvers": "^3.9.1",
-    "@langchain/community": "^0.3.15",
+    "@langchain/community": "^1.1.0",
     "@langchain/core": "^0.3.21",
     "@langchain/ollama": "^0.1.2",
     "@monaco-editor/react": "^4.7.0",
@@ -59,7 +63,7 @@
     "js-yaml": "^4.1.0",
     "langchain": "^0.3.7",
     "lucide-react": "^0.454.0",
-    "next": "15.2.4",
+    "next": "^15.5.9",
     "next-themes": "^0.4.4",
     "playwright": "^1.55.0",
     "react": "^19",

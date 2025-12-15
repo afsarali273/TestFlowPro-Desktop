@@ -63,8 +63,8 @@ export async function POST(request: NextRequest) {
         'content-type': 'application/json',
         'copilot-integration-id': 'vscode-chat',
         'editor-version': 'vscode/1.95.0',
-        'editor-plugin-version': 'copilot-chat/0.26.7',
-        'user-agent': 'GitHubCopilotChat/0.26.7',
+        'editor-plugin-version': EDITOR_PLUGIN_VERSION,
+        'user-agent': USER_AGENT,
         'openai-intent': 'conversation-panel',
         'x-github-api-version': API_VERSION,
         'x-request-id': randomUUID(),
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         errorText
       });
       
-      let errorData = {};
+      let errorData: any = {};
       try {
         errorData = JSON.parse(errorText);
       } catch (e) {
@@ -124,28 +124,36 @@ export async function POST(request: NextRequest) {
 }
 
 async function getCopilotToken(): Promise<string> {
-  try {
-    if (!fs.existsSync(tokenFile)) {
-      throw new Error('GitHub token not found. Please authenticate first.');
-    }
-
-    const tokens: GitHubTokens = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
-    
-    if (tokens.expires_at && Date.now() > tokens.expires_at) {
-      throw new Error('GitHub token has expired. Please re-authenticate.');
-    }
-
-    return tokens.access_token;
-  } catch (error) {
-    throw new Error('Failed to get GitHub token. Please authenticate first.');
+  // Do not mask errors here; let the caller handle them. Keep logic explicit and fail fast with meaningful messages.
+  if (!fs.existsSync(tokenFile)) {
+    throw new Error('GitHub token not found. Please authenticate first.');
   }
+
+  const raw = fs.readFileSync(tokenFile, 'utf8');
+  let tokens: GitHubTokens;
+  try {
+    tokens = JSON.parse(raw);
+  } catch (e) {
+    throw new Error('Failed to parse GitHub token file; it appears invalid.');
+  }
+
+  if (!tokens || !tokens.access_token) {
+    throw new Error('GitHub token not found. Please authenticate first.');
+  }
+
+  if (tokens.expires_at && Date.now() > tokens.expires_at) {
+    throw new Error('GitHub token has expired. Please re-authenticate.');
+  }
+
+  return tokens.access_token;
 }
 
 function getKnowledgeBaseContext(type: string, message: string): string {
-  const ragContext = `TestFlow Pro Framework - Complete Knowledge Base:
+  // Include a short preview of the user message so the context is more relevant and to avoid unused-parameter warnings.
+  const messagePreview = message ? `\n\nUser Message Preview:\n${message.substring(0, 300)}` : '';
 
-=== EXACT JSON STRUCTURE ===
-{"id":"suite-id","suiteName":"Suite Name","applicationName":"App Name","type":"UI","baseUrl":"https://domain.com","testCases":[{"name":"Test Name","type":"UI","testData":[],"testSteps":[{"id":"step-1","keyword":"goto","value":"https://domain.com"},{"id":"step-2","keyword":"assertVisible","locator":{"strategy":"testId","value":"element-id"}},{"id":"step-3","keyword":"click","locator":{"strategy":"role","value":"button","options":{"name":"Submit","exact":true}}}]}]}
+  const ragContext = `TestFlow Pro Framework - Complete Knowledge Base:${messagePreview}\n\n
+=== EXACT JSON STRUCTURE ===\n{"id":"suite-id","suiteName":"Suite Name","applicationName":"App Name","type":"UI","baseUrl":"https://domain.com","testCases":[{"name":"Test Name","type":"UI","testData":[],"testSteps":[{"id":"step-1","keyword":"goto","value":"https://domain.com"},{"id":"step-2","keyword":"assertVisible","locator":{"strategy":"testId","value":"element-id"}},{"id":"step-3","keyword":"click","locator":{"strategy":"role","value":"button","options":{"name":"Submit","exact":true}}}]}]}
 
 === CRITICAL FIELD MAPPINGS ===
 playwright → testflow

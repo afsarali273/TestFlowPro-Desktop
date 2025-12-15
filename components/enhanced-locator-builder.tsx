@@ -10,32 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, X, HelpCircle, Zap, Filter, Link, Eye, Code } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-interface LocatorDefinition {
-  strategy: string
-  value: string
-  options?: Record<string, any>
-  filter?: {
-    type: string
-    value: string
-    regex?: boolean
-    locator?: LocatorDefinition
-  }
-  filters?: Array<{
-    type: string
-    value: string
-    regex?: boolean
-    locator?: LocatorDefinition
-  }>
-  chain?: Array<LocatorDefinition & {
-    filters?: Array<{
-      type: string
-      value: string
-      regex?: boolean
-      locator?: LocatorDefinition
-    }>
-  }>
-  index?: string | number
-}
+// Use centralized types to remain compatible with the rest of the app
+import type { LocatorDefinition, FilterDefinition, ChainStep } from '@/types/test-suite'
 
 interface EnhancedLocatorBuilderProps {
   locator?: LocatorDefinition
@@ -69,15 +45,7 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
     }
     // Clean up empty options
     if (!value) {
-      delete updated.options![key]
-    }
-    onChange(updated)
-  }
-
-  const handleFilterChange = (filterData: any) => {
-    const updated = {
-      ...currentLocator,
-      filter: filterData || undefined
+      delete (updated.options as any)[key]
     }
     onChange(updated)
   }
@@ -90,28 +58,41 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
     onChange(updated)
   }
 
+  const updateFilter = (index: number, filter: FilterDefinition) => {
+    const currentFilters = currentLocator.filters || []
+    const updatedFilters = (currentFilters as FilterDefinition[]).map((f, i) => i === index ? filter : f)
+    handleFiltersChange(updatedFilters)
+  }
+
+  const removeFilter = (index: number) => {
+    const currentFilters = currentLocator.filters || []
+    const updated = (currentFilters as FilterDefinition[]).filter((_, i) => i !== index)
+    handleFiltersChange(updated)
+  }
+
+  // Handle legacy single filter field (clear or set)
+  const handleFilterChange = (filter?: FilterDefinition | undefined) => {
+    const updated = {
+      ...currentLocator,
+      filter: filter !== undefined ? filter : undefined
+    }
+    // If undefined, make sure the property is removed to avoid serializing it
+    if (filter === undefined) {
+      delete (updated as any).filter
+    }
+    onChange(updated)
+  }
+
   const addFilter = () => {
     const newFilter = {
       type: 'hasText',
       value: '',
-      regex: false
     }
     const currentFilters = currentLocator.filters || []
     handleFiltersChange([...currentFilters, newFilter])
   }
 
-  const removeFilter = (index: number) => {
-    const currentFilters = currentLocator.filters || []
-    handleFiltersChange(currentFilters.filter((_, i) => i !== index))
-  }
-
-  const updateFilter = (index: number, filter: any) => {
-    const currentFilters = currentLocator.filters || []
-    const updated = currentFilters.map((f, i) => i === index ? filter : f)
-    handleFiltersChange(updated)
-  }
-
-  const handleChainChange = (chainData: LocatorDefinition[]) => {
+  const handleChainChange = (chainData: ChainStep[]) => {
     const updated = {
       ...currentLocator,
       chain: chainData.length > 0 ? chainData : undefined
@@ -120,23 +101,20 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
   }
 
   const addChainStep = () => {
-    const newStep: LocatorDefinition = {
-      strategy: 'role',
-      value: 'button'
+    const newStep: ChainStep = {
+      operation: 'locator',
+      locator: {
+        strategy: 'role',
+        value: 'button'
+      }
     }
     const currentChain = currentLocator.chain || []
-    handleChainChange([...currentChain, newStep])
+    handleChainChange([...currentChain as ChainStep[], newStep])
   }
 
   const removeChainStep = (index: number) => {
     const currentChain = currentLocator.chain || []
-    handleChainChange(currentChain.filter((_, i) => i !== index))
-  }
-
-  const updateChainStep = (index: number, step: LocatorDefinition) => {
-    const currentChain = currentLocator.chain || []
-    const updated = currentChain.map((s, i) => i === index ? step : s)
-    handleChainChange(updated)
+    handleChainChange((currentChain as ChainStep[]).filter((_, i) => i !== index))
   }
 
   // Generate Playwright code preview
@@ -175,8 +153,8 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
     // Add filter (legacy single filter)
     if (currentLocator.filter) {
       code += `.filter({ ${currentLocator.filter.type}: `
-      if (currentLocator.filter.regex) {
-        code += `/${currentLocator.filter.value}/`
+      if (currentLocator.filter.value instanceof RegExp) {
+        code += `/${currentLocator.filter.value.source}/`
       } else {
         code += `'${currentLocator.filter.value}'`
       }
@@ -185,15 +163,16 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
 
     // Add multiple filters
     if (currentLocator.filters && currentLocator.filters.length > 0) {
-      currentLocator.filters.forEach(filter => {
+      currentLocator.filters.forEach((filter: FilterDefinition) => {
+        const filterValueStr = filter.value instanceof RegExp ? filter.value.source : (filter.value ?? '')
         code += `.filter({ ${filter.type}: `
         if (filter.type === 'has' || filter.type === 'hasNot') {
           // For 'has' filters, the value should be a locator expression
-          code += filter.value
-        } else if (filter.regex) {
-          code += `/${filter.value}/`
+          code += String(filterValueStr)
+        } else if (filter.value instanceof RegExp) {
+          code += `/${filterValueStr}/`
         } else {
-          code += `'${filter.value}'`
+          code += `'${filterValueStr}'`
         }
         code += ' })'
       })
@@ -201,18 +180,20 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
 
     // Add chain
     if (currentLocator.chain && currentLocator.chain.length > 0) {
-      currentLocator.chain.forEach(chainStep => {
-        let step
-        
-        // Handle both ChainStep format and direct LocatorDefinition format
+      (currentLocator.chain as ChainStep[]).forEach((chainStep) => {
+        let step: LocatorDefinition | undefined
+
+        // Handle chain step which follows ChainStep type
         if (chainStep.operation === 'locator' && chainStep.locator) {
           step = chainStep.locator
-        } else if (chainStep.strategy) {
-          step = chainStep
+        } else if ((chainStep as any).strategy) {
+          step = chainStep as unknown as LocatorDefinition
         } else {
           return // Skip invalid chain steps
         }
-        
+
+        if (!step) return
+
         switch (step.strategy) {
           case 'role':
             code += `.getByRole('${step.value}'`
@@ -237,14 +218,15 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
         
         // Add filters for this chained element
         if (step.filters && step.filters.length > 0) {
-          step.filters.forEach(filter => {
+          step.filters.forEach((filter) => {
+            const fVal = filter.value instanceof RegExp ? filter.value.source : (filter.value ?? '')
             code += `.filter({ ${filter.type}: `
             if (filter.type === 'has' || filter.type === 'hasNot') {
-              code += filter.value
-            } else if (filter.regex) {
-              code += `/${filter.value}/`
+              code += String(fVal)
+            } else if (filter.value instanceof RegExp) {
+              code += `/${fVal}/`
             } else {
-              code += `'${filter.value}'`
+              code += `'${fVal}'`
             }
             code += ' })'
           })
@@ -412,7 +394,7 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
               <div className="space-y-2">
                 <Label className="text-sm">Name/Text</Label>
                 <Input
-                  value={currentLocator.options?.name || ''}
+                  value={typeof currentLocator.options?.name === 'string' ? currentLocator.options.name : (currentLocator.options?.name instanceof RegExp ? currentLocator.options.name.source : '')}
                   onChange={(e) => handleOptionChange('name', e.target.value)}
                   placeholder={currentLocator.strategy === 'role' ? 'Subscribe, Login' : 'Button text'}
                   className="h-9"
@@ -525,7 +507,7 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
                 <div className="space-y-2">
                   <Label className="text-sm">Name</Label>
                   <Input
-                    value={currentLocator.options?.name || ''}
+                    value={typeof currentLocator.options?.name === 'string' ? currentLocator.options.name : (currentLocator.options?.name instanceof RegExp ? currentLocator.options.name.source : '')}
                     onChange={(e) => handleOptionChange('name', e.target.value)}
                     placeholder="Accessible name"
                     className="h-9"
@@ -576,7 +558,7 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
                         <Label className="text-sm">Filter Type</Label>
                         <Select
                           value={filter.type}
-                          onValueChange={(value) => updateFilter(index, { ...filter, type: value })}
+                          onValueChange={(value) => updateFilter(index, { ...filter, type: value as FilterDefinition['type'] })}
                         >
                           <SelectTrigger className="h-9">
                             <SelectValue />
@@ -591,7 +573,7 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
                       <div className="space-y-2">
                         <Label className="text-sm">Filter Value</Label>
                         <Input
-                          value={filter.value}
+                          value={filter.value instanceof RegExp ? filter.value.source : (filter.value ?? '')}
                           onChange={(e) => updateFilter(index, { ...filter, value: e.target.value })}
                           placeholder={filter.type === 'has' ? 'page.getByRole("button")' : 'Text to filter by'}
                           className="h-9"
@@ -602,8 +584,13 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
                         <div className="flex items-center space-x-2 h-9">
                           <input
                             type="checkbox"
-                            checked={filter.regex || false}
-                            onChange={(e) => updateFilter(index, { ...filter, regex: e.target.checked })}
+                            checked={filter.value instanceof RegExp}
+                            onChange={(e) => {
+                              const checked = e.target.checked
+                              const currentVal = filter.value
+                              const newVal = checked ? new RegExp(typeof currentVal === 'string' ? currentVal : '') : (currentVal instanceof RegExp ? currentVal.source : String(currentVal ?? ''))
+                              updateFilter(index, { ...filter, value: newVal })
+                            }}
                             className="h-4 w-4"
                           />
                           <span className="text-sm">Regex</span>
@@ -636,7 +623,7 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
                     <span className="text-sm font-medium text-yellow-900">Legacy Filter Detected</span>
                   </div>
                   <p className="text-xs text-yellow-700 mb-3">
-                    Found legacy single filter: {currentLocator.filter.type} = "{currentLocator.filter.value}"
+                    Found legacy single filter: {currentLocator.filter.type} = "{String(currentLocator.filter.value ?? '')}"
                   </p>
                   <Button
                     size="sm"
@@ -675,44 +662,66 @@ export function EnhancedLocatorBuilder({ locator, onChange, className = "" }: En
             </CardHeader>
             <CardContent className="space-y-4">
               {currentLocator.chain && currentLocator.chain.length > 0 ? (
-                currentLocator.chain.map((step, index) => (
-                  <div key={index} className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
-                    <div className="flex-1 grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm">Strategy</Label>
-                        <Select
-                          value={step.strategy}
-                          onValueChange={(value) => updateChainStep(index, { ...step, strategy: value })}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="role">Role</SelectItem>
-                            <SelectItem value="text">Text</SelectItem>
-                            <SelectItem value="testId">Test ID</SelectItem>
-                          </SelectContent>
-                        </Select>
+                (currentLocator.chain as ChainStep[]).map((step, index) => {
+                  // Normalize to a LocatorDefinition for UI bindings
+                  const locatorForUI: LocatorDefinition = (step as ChainStep).operation === 'locator' && (step as ChainStep).locator ? (step as ChainStep).locator! : (step as unknown as LocatorDefinition)
+                  return (
+                    <div key={index} className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
+                      <div className="flex-1 grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm">Strategy</Label>
+                          <Select
+                            value={locatorForUI.strategy}
+                            onValueChange={(value) => {
+                              const updatedChain = (currentLocator.chain as ChainStep[]).map((cs, i) => {
+                                if (i !== index) return cs
+                                if (cs.operation === 'locator' && cs.locator) {
+                                  return { ...cs, locator: { ...(cs.locator), strategy: value as LocatorDefinition['strategy'] } }
+                                }
+                                return { operation: 'locator', locator: { strategy: value as LocatorDefinition['strategy'], value: '' } } as ChainStep
+                              })
+                              handleChainChange(updatedChain)
+                            }}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="role">Role</SelectItem>
+                              <SelectItem value="text">Text</SelectItem>
+                              <SelectItem value="testId">Test ID</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm">Value</Label>
+                          <Input
+                            value={locatorForUI.value}
+                            onChange={(e) => {
+                              const updatedChain = (currentLocator.chain as ChainStep[]).map((cs, i) => {
+                                if (i !== index) return cs
+                                if (cs.operation === 'locator' && cs.locator) {
+                                  return { ...cs, locator: { ...(cs.locator), value: e.target.value } }
+                                }
+                                return { operation: 'locator', locator: { strategy: 'css', value: e.target.value } } as ChainStep
+                              })
+                              handleChainChange(updatedChain)
+                            }}
+                            className="h-9"
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm">Value</Label>
-                        <Input
-                          value={step.value}
-                          onChange={(e) => updateChainStep(index, { ...step, value: e.target.value })}
-                          className="h-9"
-                        />
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => removeChainStep(index)}
+                        className="h-9 w-9 p-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => removeChainStep(index)}
-                      className="h-9 w-9 p-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))
+                  )
+                })
               ) : (
                 <div className="text-center py-8 text-slate-500">
                   <Link className="h-8 w-8 mx-auto mb-2 opacity-50" />

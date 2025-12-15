@@ -1,4 +1,4 @@
-import { TestSuite, TestCase, TestData, Assertion } from '../types';
+import { TestSuite, TestCase, TestData, Assertion } from '../../types/test-suite';
 
 export interface ParsedSoapRequest {
   method: string;
@@ -103,8 +103,8 @@ export class SoapParser {
       preProcess: [],
       body: this.generateInvalidSoapEnvelope(),
       assertions: [
-        { type: 'statusCode', expected: 500 },
-        { type: 'contains', xpathExpression: '//soap:Fault', expected: 'soap:Fault' }
+        { type: 'statusCode', jsonPath: '$', expected: 500 },
+        { type: 'contains', jsonPath: '$', xpathExpression: '//soap:Fault', expected: 'soap:Fault' }
       ]
     });
 
@@ -127,9 +127,9 @@ export class SoapParser {
 
   private static generateSoapAssertions(): Assertion[] {
     return [
-      { type: 'statusCode', expected: 200 },
-      { type: 'contains', xpathExpression: '//soap:Envelope', expected: 'soap:Envelope' },
-      { type: 'exists', xpathExpression: '//soap:Body' }
+      { type: 'statusCode', jsonPath: '$', expected: 200 },
+      { type: 'contains', jsonPath: '$', xpathExpression: '//soap:Envelope', expected: 'soap:Envelope' },
+      { type: 'exists', jsonPath: '$', xpathExpression: '//soap:Body' }
     ];
   }
 
