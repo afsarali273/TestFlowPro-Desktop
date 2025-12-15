@@ -1,0 +1,41 @@
+{
+  "deprecated": true,
+  "message": "This file has been split into separate UI and API knowledge bases",
+  "replacedBy": [
+    "ui-playwright-conversion-examples.json",
+    "api-conversion-examples.json"
+  ]
+} "label", 
+      "getByText": "text",
+      "getByPlaceholder": "placeholder",
+      "getByAltText": "altText",
+      "getByTitle": "title",
+      "getByTestId": "testId",
+      "locator": "css"
+    },
+    "keywords": {
+      "click": "click",
+      "dblclick": "dblClick",
+      "fill": "fill",
+      "type": "type",
+      "press": "press",
+      "check": "check",
+      "uncheck": "uncheck",
+      "selectOption": "select",
+      "hover": "hover",
+      "focus": "focus",
+      "goto": "goto",
+      "screenshot": "screenshot",
+      "waitForTimeout": "waitForTimeout",
+      "toBeVisible": "assertVisible",
+      "toBeHidden": "assertHidden",
+      "toHaveText": "assertHaveText",
+      "toHaveCount": "assertHaveCount"
+    },
+    "filterTypes": {
+      "hasText": "hasText",
+      "has": "has",
+      "hasNot": "hasNot"
+    }
+  }
+}

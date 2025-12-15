@@ -1,4 +1,32 @@
 export class GitHubAuthService {
+  async getCopilotToken(customPath?: string): Promise<string | null> {
+    try {
+      const response = await fetch('/api/github-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getCopilotToken', customPath })
+      });
+      const data = await response.json();
+      return data.token || null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getValidToken(): Promise<string | null> {
+    try {
+      const response = await fetch('/api/github-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getValidToken' })
+      });
+      const data = await response.json();
+      return data.token || null;
+    } catch {
+      return null;
+    }
+  }
+
   async checkAuthStatus(): Promise<{ hasToken: boolean; isValid: boolean }> {
     try {
       const response = await fetch('/api/github-auth', {

@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestFlowPro Test Suite Schema",
+  "type": "object",
+  "definitions": {
+    "LocatorOptions": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object", "properties": { "pattern": { "type": "string" }, "flags": { "type": "string" } } }
+          ]
+        },
+        "exact": { "type": "boolean" },
+        "checked": { "type": "boolean" },
+        "expanded": { "type": "boolean" },
+        "pressed": { "type": "boolean" },
+        "selected": { "type": "boolean" },
+        "level": { "type": "number" },
+        "hasText": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object", "properties": { "pattern": { "type": "string" }, "flags": { "type": "string" } } }
+          ]
+        },
+        "hasNotText": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object", "properties": { "pattern": { "type": "string" }, "flags": { "type": "string" } } }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "FilterDefinition": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["hasText", "has", "hasNot"]
+        },
+        "value": { "type": "string" },
+        "locator": { "$ref": "#/definitions/LocatorDefinition" }
+      },
+      "required": ["type"],
+      "additionalProperties": false,
+      "if": {
+        "properties": { "type": { "const": "hasText" } }
+      },
+      "then": {
+        "required": ["value"]
+      },
+      "else": {
+        "if": {
+          "properties": { "type": { "enum": ["has", "hasNot"] } }
+        },
+        "then": {
+          "required": ["locator"]
+        }
+      }
+    },
+    "LocatorDefinition": {
+      "type": "object",
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["role", "label", "text", "placeholder", "altText", "title", "testId", "css", "xpath"]
+        },
+        "value": { "type": "string" },
+        "options": { "$ref": "#/definitions/LocatorOptions" },
+        "filter": { "$ref": "#/definitions/FilterDefinition" }
+      },
+      "required": ["strategy", "value"],
+      "additionalProperties": false
+    },
+    "TestStep": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "keyword": {
+          "type": "string",
+          "enum": [
+            "openBrowser", "closeBrowser", "closePage", "maximize", "minimize", "setViewportSize",
+            "switchToFrame", "switchToMainFrame", "acceptAlert", "dismissAlert", "getAlertText",
+            "goto", "waitForNavigation", "reload", "goBack", "goForward", "refresh",
+            "click", "dblClick", "rightClick", "type", "fill", "press", "clear",
+            "select", "check", "uncheck", "setChecked", "hover", "focus",
+            "scrollIntoViewIfNeeded", "scrollTo", "scrollUp", "scrollDown",
+            "dragAndDrop", "uploadFile", "downloadFile",
+            "getText", "getAttribute", "getTitle", "getUrl", "getValue", "getCount",
+            "assertText", "assertVisible", "assertHidden", "assertEnabled", "assertDisabled",
+            "assertCount", "assertValue", "assertAttribute", "assertHaveText", "assertHaveCount",
+            "assertChecked", "assertUnchecked", "assertContainsText", "assertUrl", "assertTitle",
+            "waitForSelector", "waitForTimeout", "waitForFunction", "waitForElement", "waitForText",
+            "screenshot", "customStep", "customCode"
+          ]
+        },
+        "target": { "type": "string" },
+        "locator": { "$ref": "#/definitions/LocatorDefinition" },
+        "value": { "type": "string" },
+        "options": { "type": "object" },
+        "assertions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Assertion" }
+        },
+        "store": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "skipOnFailure": { "type": "boolean" },
+        "customCode": { "type": "string" }
+      },
+      "required": ["id", "keyword"],
+      "additionalProperties": false
+    },
+    "Assertion": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "equals", "notEquals", "contains", "startsWith", "endsWith", "greaterThan", "lessThan",
+            "in", "notIn", "includesAll", "length", "size", "statusCode", "type", "exists", "regex", "arrayObjectMatch"
+          ]
+        },
+        "jsonPath": { "type": "string" },
+        "xpathExpression": { "type": "string" },
+        "expected": {},
+        "matchField": { "type": "string" },
+        "matchValue": { "type": "string" },
+        "assertField": { "type": "string" }
+      },
+      "required": ["type", "jsonPath"],
+      "additionalProperties": false
+    },
+    "TestCase": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["SOAP", "REST", "UI"]
+        },
+        "testData": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/TestData" }
+        },
+        "testSteps": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/TestStep" }
+        }
+      },
+      "required": ["name", "type", "testData", "testSteps"],
+      "additionalProperties": false
+    },
+    "TestData": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "method": { "type": "string" },
+        "endpoint": { "type": "string" },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "preProcess": {},
+        "body": {},
+        "bodyFile": { "type": "string" },
+        "assertions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Assertion" }
+        },
+        "responseSchema": {},
+        "responseSchemaFile": { "type": "string" },
+        "store": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "required": ["name", "method", "endpoint"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": { "type": "string" },
+    "suiteName": { "type": "string" },
+    "applicationName": { "type": "string" },
+    "type": {
+      "type": "string",
+      "enum": ["UI", "API"]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      }
+    },
+    "baseUrl": { "type": "string" },
+    "testCases": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/TestCase" }
+    },
+    "status": { "type": "string" },
+    "fileName": { "type": "string" },
+    "filePath": { "type": "string" }
+  },
+  "required": ["id", "suiteName", "applicationName", "baseUrl", "testCases"],
+  "additionalProperties": false
+}

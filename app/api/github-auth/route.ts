@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { homedir } from 'os';
 
 interface GitHubTokens {
   access_token: string;
@@ -35,6 +36,10 @@ export async function POST(request: NextRequest) {
       return setManualToken(body);
     } else if (action === 'pollToken') {
       return pollTokenStatus(body);
+    } else if (action === 'getCopilotToken') {
+      return getCopilotToken(body);
+    } else if (action === 'getValidToken') {
+      return getValidToken(body);
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
@@ -181,5 +186,65 @@ function clearTokens() {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to clear tokens' }, { status: 500 });
+  }
+}
+
+function getCopilotToken(body: any) {
+  try {
+    const { customPath } = body;
+    const appsJsonPath = customPath || path.join(homedir(), '.config', 'github-copilot', 'apps.json');
+    
+    if (!fs.existsSync(appsJsonPath)) {
+      return NextResponse.json({ token: null });
+    }
+    
+    const content = fs.readFileSync(appsJsonPath, 'utf-8');
+    const apps = JSON.parse(content);
+    
+    for (const [key, value] of Object.entries(apps)) {
+      if (key.includes('github.com') && typeof value === 'object' && value !== null) {
+        const app = value as { oauth_token?: string };
+        if (app.oauth_token) {
+          return NextResponse.json({ token: app.oauth_token });
+        }
+      }
+    }
+    
+    return NextResponse.json({ token: null });
+  } catch (error) {
+    return NextResponse.json({ token: null });
+  }
+}
+
+async function getValidToken(body: any) {
+  try {
+    const { customPath } = body;
+    
+    // Try to get copilot token first
+    const copilotResponse = getCopilotToken({ customPath });
+    const copilotData = await copilotResponse.json();
+    
+    if (copilotData.token) {
+      // Validate the token
+      const isValid = await validateGitHubToken(copilotData.token);
+      if (isValid) {
+        return NextResponse.json({ token: copilotData.token });
+      }
+    }
+    
+    return NextResponse.json({ token: null });
+  } catch (error) {
+    return NextResponse.json({ token: null });
+  }
+}
+
+async function validateGitHubToken(token: string): Promise<boolean> {
+  try {
+    const response = await fetch('https://api.github.com/user', {
+      headers: { 'Authorization': `token ${token}` }
+    });
+    return response.ok;
+  } catch {
+    return false;
   }
 }

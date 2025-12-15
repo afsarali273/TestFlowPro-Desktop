@@ -1,0 +1,208 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestFlowPro API Testing Schema", 
+  "description": "JSON Schema for API test suites in TestFlowPro",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the test suite"
+    },
+    "suiteName": {
+      "type": "string",
+      "description": "Name of the API test suite"
+    },
+    "applicationName": {
+      "type": "string",
+      "description": "Name of the application or service being tested"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["API"],
+      "description": "Type of test suite"
+    },
+    "baseUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Base URL for the API under test"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "serviceName": {"type": "string"},
+          "suiteType": {"type": "string"}
+        }
+      }
+    },
+    "testCases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/APITestCase"
+      }
+    }
+  },
+  "required": ["id", "suiteName", "applicationName", "type", "baseUrl", "testCases"],
+  "definitions": {
+    "APITestCase": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "status": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["REST", "SOAP"]
+        },
+        "testData": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/APITestData"
+          }
+        },
+        "testSteps": {
+          "type": "array",
+          "items": {}
+        }
+      },
+      "required": ["name", "type", "testData", "testSteps"]
+    },
+    "APITestData": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
+        },
+        "endpoint": {"type": "string"},
+        "headers": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        },
+        "body": {
+          "oneOf": [
+            {"type": "object"},
+            {"type": "string"},
+            {"type": "array"}
+          ]
+        },
+        "bodyFile": {"type": "string"},
+        "preProcess": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PreProcessFunction"
+          }
+        },
+        "assertions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/APIAssertion"
+          }
+        },
+        "responseSchema": {"type": "object"},
+        "responseSchemaFile": {"type": "string"},
+        "store": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": {"type": "string"}
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/StoreArrayObject"
+              }
+            }
+          ]
+        }
+      },
+      "required": ["name", "method", "endpoint"]
+    },
+    "PreProcessFunction": {
+      "type": "object",
+      "properties": {
+        "var": {"type": "string"},
+        "function": {
+          "type": "string",
+          "enum": [
+            "faker.email", "faker.uuid", "faker.username", "faker.name",
+            "date.now", "encrypt", "custom.authToken", "generateUser", "dbQuery"
+          ]
+        },
+        "args": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "db": {"type": "string"},
+        "mapTo": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        }
+      },
+      "required": ["function"]
+    },
+    "APIAssertion": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "statusCode", "equals", "notEquals", "contains", "startsWith", "endsWith",
+            "greaterThan", "lessThan", "in", "notIn", "includesAll", "length",
+            "size", "type", "exists", "regex", "arrayObjectMatch"
+          ]
+        },
+        "jsonPath": {"type": "string"},
+        "expected": {
+          "oneOf": [
+            {"type": "string"},
+            {"type": "number"},
+            {"type": "boolean"},
+            {"type": "array"}
+          ]
+        }
+      },
+      "required": ["type"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {"type": {"const": "statusCode"}}
+          },
+          "then": {
+            "required": ["expected"]
+          }
+        },
+        {
+          "if": {
+            "properties": {"type": {"enum": ["equals", "notEquals", "contains", "startsWith", "endsWith", "greaterThan", "lessThan", "length", "size", "regex"]}}
+          },
+          "then": {
+            "required": ["jsonPath", "expected"]
+          }
+        },
+        {
+          "if": {
+            "properties": {"type": {"const": "exists"}}
+          },
+          "then": {
+            "required": ["jsonPath"]
+          }
+        }
+      ]
+    },
+    "StoreArrayObject": {
+      "type": "object",
+      "properties": {
+        "type": {"const": "arrayObjectMatch"},
+        "jsonPath": {"type": "string"},
+        "matchField": {"type": "string"},
+        "matchValue": {"type": "string"},
+        "extractField": {"type": "string"},
+        "variableName": {"type": "string"}
+      },
+      "required": ["type", "jsonPath", "matchField", "matchValue", "extractField", "variableName"]
+    }
+  }
+}

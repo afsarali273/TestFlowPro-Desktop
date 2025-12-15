@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
+import { readFile } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'node:crypto';
 
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     const token = await getCopilotToken();
     console.log('✅ Token retrieved, length:', token?.length || 0);
     
-    const context = getKnowledgeBaseContext(type, message);
+    const context = await getKnowledgeBaseContext(type, message);
     
     const requestBody = {
       messages: [
@@ -63,8 +64,8 @@ export async function POST(request: NextRequest) {
         'content-type': 'application/json',
         'copilot-integration-id': 'vscode-chat',
         'editor-version': 'vscode/1.95.0',
-        'editor-plugin-version': EDITOR_PLUGIN_VERSION,
-        'user-agent': USER_AGENT,
+        'editor-plugin-version': 'copilot-chat/0.26.7',
+        'user-agent': 'GitHubCopilotChat/0.26.7',
         'openai-intent': 'conversation-panel',
         'x-github-api-version': API_VERSION,
         'x-request-id': randomUUID(),
@@ -124,36 +125,72 @@ export async function POST(request: NextRequest) {
 }
 
 async function getCopilotToken(): Promise<string> {
-  // Do not mask errors here; let the caller handle them. Keep logic explicit and fail fast with meaningful messages.
-  if (!fs.existsSync(tokenFile)) {
-    throw new Error('GitHub token not found. Please authenticate first.');
-  }
-
-  const raw = fs.readFileSync(tokenFile, 'utf8');
-  let tokens: GitHubTokens;
   try {
-    tokens = JSON.parse(raw);
-  } catch (e) {
-    throw new Error('Failed to parse GitHub token file; it appears invalid.');
-  }
+    // Try to get token from GitHub Copilot apps.json first
+    const response = await fetch('http://localhost:3000/api/github-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getValidToken' })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.token) {
+        return data.token;
+      }
+    }
+    
+    // Fallback to local token file
+    if (!fs.existsSync(tokenFile)) {
+      throw new Error('GitHub token not found. Please authenticate first.');
+    }
 
-  if (!tokens || !tokens.access_token) {
-    throw new Error('GitHub token not found. Please authenticate first.');
-  }
+    const tokens: GitHubTokens = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+    
+    if (tokens.expires_at && Date.now() > tokens.expires_at) {
+      throw new Error('GitHub token has expired. Please re-authenticate.');
+    }
 
-  if (tokens.expires_at && Date.now() > tokens.expires_at) {
-    throw new Error('GitHub token has expired. Please re-authenticate.');
+    return tokens.access_token;
+  } catch (error) {
+    throw new Error('Failed to get GitHub token. Please authenticate first.');
   }
-
-  return tokens.access_token;
 }
 
-function getKnowledgeBaseContext(type: string, message: string): string {
-  // Include a short preview of the user message so the context is more relevant and to avoid unused-parameter warnings.
-  const messagePreview = message ? `\n\nUser Message Preview:\n${message.substring(0, 300)}` : '';
+async function getKnowledgeBaseContext(type: string, message: string): Promise<string> {
+  // Load markdown documentation from doc/ folder
+  const docsPath = path.join(process.cwd(), 'doc');
+  let markdownContent = '';
+  
+  try {
+    const docFiles = {
+      'ui': ['ui-playwright-knowledge-base.md', 'playwright-locator-mapping.md', 'strict-conversion-rules.md'],
+      'api': ['api-testing-knowledge-base.md', 'curl-conversion-rules.md', 'api-testdata-format.md'],
+      'curl': ['curl-conversion-rules.md', 'api-testing-knowledge-base.md'],
+      'swagger': ['api-testing-knowledge-base.md', 'api-testdata-format.md']
+    };
+    
+    const relevantFiles = docFiles[type as keyof typeof docFiles] || docFiles['api'];
+    
+    for (const file of relevantFiles) {
+      try {
+        const filePath = path.join(docsPath, file);
+        const content = await readFile(filePath, 'utf-8');
+        markdownContent += `\n\n=== ${file} ===\n${content}`;
+      } catch (err) {
+        console.warn(`Could not load ${file}`);
+      }
+    }
+  } catch (error) {
+    console.warn('Could not load documentation files');
+  }
+  
+  const ragContext = `TestFlow Pro Framework - Complete Knowledge Base:
 
-  const ragContext = `TestFlow Pro Framework - Complete Knowledge Base:${messagePreview}\n\n
-=== EXACT JSON STRUCTURE ===\n{"id":"suite-id","suiteName":"Suite Name","applicationName":"App Name","type":"UI","baseUrl":"https://domain.com","testCases":[{"name":"Test Name","type":"UI","testData":[],"testSteps":[{"id":"step-1","keyword":"goto","value":"https://domain.com"},{"id":"step-2","keyword":"assertVisible","locator":{"strategy":"testId","value":"element-id"}},{"id":"step-3","keyword":"click","locator":{"strategy":"role","value":"button","options":{"name":"Submit","exact":true}}}]}]}
+${markdownContent}
+
+=== EXACT JSON STRUCTURE ===
+{"id":"suite-id","suiteName":"Suite Name","applicationName":"App Name","type":"UI","baseUrl":"https://domain.com","testCases":[{"name":"Test Name","type":"UI","testData":[],"testSteps":[{"id":"step-1","keyword":"goto","value":"https://domain.com"},{"id":"step-2","keyword":"assertVisible","locator":{"strategy":"testId","value":"element-id"}},{"id":"step-3","keyword":"click","locator":{"strategy":"role","value":"button","options":{"name":"Submit","exact":true}}}]}]}
 
 === CRITICAL FIELD MAPPINGS ===
 playwright → testflow

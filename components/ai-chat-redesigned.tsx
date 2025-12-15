@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Bot, X, Send, Upload, FileText, Code, Globe, Sparkles, Copy, Check, RotateCcw, Play, Square, Download, Settings, Zap } from 'lucide-react'
+import { Bot, X, Send, Upload, FileText, Code, Globe, Sparkles, Copy, Check, RotateCcw, Play, Square, Download, Settings, Zap, Expand } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast'
 import { AI_CONFIG } from '../ai-config'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { GitHubConfigModal } from '@/components/github-config-modal'
 
 interface Message {
   id: string
@@ -54,6 +55,14 @@ export function AIChat() {
   const [githubToken, setGithubToken] = useState('')
   const [deviceFlow, setDeviceFlow] = useState<{ userCode: string; verificationUri: string; deviceCode: string } | null>(null)
   const [isPolling, setIsPolling] = useState(false)
+  const [showGitHubConfig, setShowGitHubConfig] = useState(false)
+  const [copilotPath, setCopilotPath] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('githubCopilotPath') || ''
+    }
+    return ''
+  })
+  const [showSuiteModal, setShowSuiteModal] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -86,6 +95,20 @@ export function AIChat() {
     try {
       const { GitHubAuthService } = await import('@/lib/services/githubAuth')
       const authService = new GitHubAuthService()
+      
+      // Get stored path
+      const storedPath = localStorage.getItem('githubCopilotPath')
+      const pathToUse = copilotPath || storedPath
+      
+      // Try to get copilot token first if path is configured
+      if (pathToUse) {
+        const copilotToken = await authService.getCopilotToken(pathToUse)
+        if (copilotToken) {
+          setGithubAuthStatus('authenticated')
+          return
+        }
+      }
+      
       const status = await authService.checkAuthStatus()
       const isAuthenticated = status.hasToken && status.isValid
       setGithubAuthStatus(isAuthenticated ? 'authenticated' : 'not-authenticated')
@@ -890,6 +913,9 @@ export function AIChat() {
                             <Button size="sm" variant="outline" onClick={() => setShowTokenInput(true)} className="w-full h-8 text-xs">
                               🔑 Manual Token
                             </Button>
+                            <Button size="sm" variant="outline" onClick={() => setShowGitHubConfig(true)} className="w-full h-8 text-xs">
+                              ⚙️ Configure Path
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -1438,6 +1464,15 @@ Be as detailed as possible for better test generation.`}
                         <Button 
                           size="sm" 
                           variant="outline" 
+                          onClick={() => setShowSuiteModal(true)} 
+                          className="h-8 px-3 text-xs hover:bg-slate-100 border-slate-300 rounded-lg transition-all duration-200 hover:scale-105"
+                        >
+                          <Expand className="h-3 w-3 mr-1" />
+                          Expand
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
                           onClick={handleCopyTestCases} 
                           className="h-8 px-3 text-xs hover:bg-slate-100 border-slate-300 rounded-lg transition-all duration-200 hover:scale-105"
                         >
@@ -1514,6 +1549,64 @@ Be as detailed as possible for better test generation.`}
                 <Button variant="outline" onClick={() => setShowSaveDialog(false)} className="flex-1">
                   Cancel
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      
+      {/* GitHub Config Modal */}
+      {showGitHubConfig && (
+        <GitHubConfigModal
+          currentPath={copilotPath}
+          onSave={async (path) => {
+            setCopilotPath(path)
+            localStorage.setItem('githubCopilotPath', path)
+            setShowGitHubConfig(false)
+            
+            // Auto-authenticate with the new path
+            try {
+              const { GitHubAuthService } = await import('@/lib/services/githubAuth')
+              const authService = new GitHubAuthService()
+              const token = await authService.getCopilotToken(path)
+              
+              if (token) {
+                setGithubAuthStatus('authenticated')
+                toast({ title: 'Success', description: 'GitHub Copilot authenticated successfully!' })
+              } else {
+                toast({ title: 'Warning', description: 'Path saved but no valid token found', variant: 'destructive' })
+              }
+            } catch (error) {
+              toast({ title: 'Error', description: 'Failed to authenticate with saved path', variant: 'destructive' })
+            }
+          }}
+          onCancel={() => setShowGitHubConfig(false)}
+        />
+      )}
+      
+      {/* Expanded Test Suite Modal */}
+      {showSuiteModal && generatedSuite && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+          <Card className="w-full max-w-4xl h-[90vh] flex flex-col">
+            <CardHeader className="flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-emerald-600" />
+                  {generateTestCaseOnly ? 'Generated Test Cases' : 'Generated Test Suite'}
+                </CardTitle>
+                <Button variant="ghost" size="icon" onClick={() => setShowSuiteModal(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden">
+              <div className="h-full bg-slate-50 rounded-lg p-4 overflow-y-auto">
+                <pre className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {generateTestCaseOnly 
+                    ? JSON.stringify(generatedSuite.testCases, null, 2)
+                    : JSON.stringify(generatedSuite, null, 2)
+                  }
+                </pre>
               </div>
             </CardContent>
           </Card>

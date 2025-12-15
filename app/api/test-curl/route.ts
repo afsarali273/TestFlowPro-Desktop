@@ -16,9 +16,9 @@ export async function POST(request: NextRequest) {
     
     // Clean and normalize the curl command
     let cleanCommand = curlCommand
-      .replace(/\\\n/g, ' ')  // Remove line continuations
-      .replace(/\s+/g, ' ')    // Normalize whitespace
-      .replace(/'/g, '"')      // Replace single quotes with double quotes
+      .replace(/\\\s*\n/g, ' ')  // Remove line continuations with backslash
+      .replace(/\\(?!n)/g, '')    // Remove standalone backslashes (but keep \n)
+      .replace(/\s+/g, ' ')        // Normalize whitespace
       .trim();
     
     // Add timeout and format options to curl command

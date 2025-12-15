@@ -1,0 +1,59 @@
+{
+  "correctTestSuiteStructure": true,
+  "example": {
+    "id": "playwright-test-suite",
+    "suiteName": "Playwright Test Suite", 
+    "type": "UI",
+    "baseUrl": "",
+    "testCases": [{
+      "name": "Test Case Name",
+      "type": "UI",
+      "testSteps": [
+        {
+          "id": "step-1",
+          "keyword": "goto",
+          "value": "https://playwright.dev/"
+        },
+        {
+          "id": "step-2", 
+          "keyword": "click",
+          "locator": {
+            "strategy": "role",
+            "value": "link",
+            "options": {
+              "name": "Get started"
+            }
+          }
+        },
+        {
+          "id": "step-3",
+          "keyword": "fill",
+          "locator": {
+            "strategy": "role", 
+            "value": "searchbox",
+            "options": {
+              "name": "Search"
+            }
+          },
+          "value": "API"
+        },
+        {
+          "id": "step-4",
+          "keyword": "press",
+          "locator": {
+            "strategy": "role",
+            "value": "searchbox", 
+            "options": {
+              "name": "Search"
+            }
+          },
+          "value": "Enter"
+        }
+      ]
+    }]
+  },
+  "incorrectStructures": {
+    "arrayOfTestCases": "WRONG - Do not return array of test cases",
+    "optionsAtStepLevel": "WRONG - Options should be inside locator object, not at step level"
+  }
+}

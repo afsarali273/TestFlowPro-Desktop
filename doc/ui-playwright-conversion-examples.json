@@ -1,0 +1,400 @@
+{
+  "uiTestingOnly": true,
+  "playwrightToJsonExamples": [
+    {
+      "input": "await page.getByRole('button').click();",
+      "output": {
+        "id": "step1",
+        "keyword": "click",
+        "locator": {
+          "strategy": "role",
+          "value": "button"
+        }
+      }
+    },
+    {
+      "input": "await page.getByRole('button', { name: 'Submit' }).click();",
+      "output": {
+        "id": "step1",
+        "keyword": "click",
+        "locator": {
+          "strategy": "role",
+          "value": "button",
+          "options": {
+            "name": "Submit"
+          }
+        }
+      }
+    },
+    {
+      "input": "await page.getByText('Sign up', { exact: true }).click();",
+      "output": {
+        "id": "step1",
+        "keyword": "click",
+        "locator": {
+          "strategy": "text",
+          "value": "Sign up",
+          "options": {
+            "exact": true
+          }
+        }
+      }
+    },
+    {
+      "input": "await page.getByLabel('Email').fill('test@example.com');",
+      "output": {
+        "id": "step1",
+        "keyword": "fill",
+        "locator": {
+          "strategy": "label",
+          "value": "Email"
+        },
+        "value": "test@example.com"
+      }
+    },
+    {
+      "input": "await page.getByTestId('submit-btn').click();",
+      "output": {
+        "id": "step1",
+        "keyword": "click",
+        "locator": {
+          "strategy": "testId",
+          "value": "submit-btn"
+        }
+      }
+    },
+    {
+      "input": "await page.locator('.btn-primary').click();",
+      "output": {
+        "id": "step1",
+        "keyword": "click",
+        "locator": {
+          "strategy": "css",
+          "value": ".btn-primary"
+        }
+      }
+    },
+    {
+      "input": "await page.getByRole('button').filter({ hasText: 'Save' }).click();",
+      "output": {
+        "id": "step1",
+        "keyword": "click",
+        "locator": {
+          "strategy": "role",
+          "value": "button",
+          "filter": {
+            "type": "hasText",
+            "value": "Save"
+          }
+        }
+      }
+    },
+    {
+      "input": "await page.getByRole('listitem').filter({ has: page.getByRole('button', { name: 'Delete' }) }).click();",
+      "output": {
+        "id": "step1",
+        "keyword": "click",
+        "locator": {
+          "strategy": "role",
+          "value": "listitem",
+          "filter": {
+            "type": "has",
+            "locator": {
+              "strategy": "role",
+              "value": "button",
+              "options": {
+                "name": "Delete"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input": "await expect(page.getByText('Welcome')).toBeVisible();",
+      "output": {
+        "id": "step1",
+        "keyword": "assertVisible",
+        "locator": {
+          "strategy": "text",
+          "value": "Welcome"
+        }
+      }
+    },
+    {
+      "input": "await expect(page.getByRole('button')).toHaveText('Submit');",
+      "output": {
+        "id": "step1",
+        "keyword": "assertHaveText",
+        "locator": {
+          "strategy": "role",
+          "value": "button"
+        },
+        "value": "Submit"
+      }
+    },
+    {
+      "input": "const title = await page.locator('h1').textContent();",
+      "output": {
+        "id": "step1",
+        "keyword": "getText",
+        "locator": {
+          "strategy": "css",
+          "value": "h1"
+        },
+        "store": {
+          "pageTitle": "$text"
+        }
+      }
+    },
+    {
+      "input": "const userId = await page.locator('#user').getAttribute('data-id');",
+      "output": {
+        "id": "step1",
+        "keyword": "getAttribute",
+        "locator": {
+          "strategy": "css",
+          "value": "#user"
+        },
+        "value": "data-id",
+        "store": {
+          "userId": "$attribute"
+        }
+      }
+    },
+    {
+      "input": "await page.fill('#search', title);",
+      "output": {
+        "id": "step1",
+        "keyword": "fill",
+        "locator": {
+          "strategy": "css",
+          "value": "#search"
+        },
+        "value": "{{pageTitle}}"
+      }
+    },
+    {
+      "input": "await page.goto(`/user/${userId}`);",
+      "output": {
+        "id": "step1",
+        "keyword": "goto",
+        "value": "/user/{{userId}}"
+      }
+    },
+    {
+      "input": "await page.locator('.item').nth(0).click(); await page.locator('.item').nth(1).click();",
+      "output": {
+        "id": "step1",
+        "keyword": "customCode",
+        "customCode": "await page.locator('.item').nth(0).click();\nawait page.locator('.item').nth(1).click();"
+      }
+    },
+    {
+      "input": "const count = await page.locator('.product').count(); expect(count).toBeGreaterThan(5);",
+      "output": {
+        "id": "step1",
+        "keyword": "customCode",
+        "customCode": "const count = await page.locator('.product').count();\nexpect(count).toBeGreaterThan(5);"
+      }
+    }
+  ],
+  "uiKeywords": [
+    "openBrowser", "closeBrowser", "closePage", "maximize", "minimize", "setViewportSize",
+    "switchToFrame", "switchToMainFrame", "acceptAlert", "dismissAlert", "getAlertText",
+    "goto", "waitForNavigation", "reload", "goBack", "goForward", "refresh",
+    "click", "dblClick", "rightClick", "type", "fill", "press", "clear",
+    "select", "check", "uncheck", "setChecked", "hover", "focus",
+    "scrollIntoViewIfNeeded", "scrollTo", "scrollUp", "scrollDown",
+    "dragAndDrop", "uploadFile", "downloadFile",
+    "getText", "getAttribute", "getTitle", "getUrl", "getValue", "getCount",
+    "assertText", "assertVisible", "assertHidden", "assertEnabled", "assertDisabled",
+    "assertCount", "assertValue", "assertAttribute", "assertHaveText", "assertHaveCount",
+    "assertChecked", "assertUnchecked", "assertContainsText", "assertUrl", "assertTitle",
+    "waitForSelector", "waitForTimeout", "waitForFunction", "waitForElement", "waitForText",
+    "screenshot", "customStep", "customCode"
+  ],
+  "locatorStrategies": {
+    "getByRole": "role",
+    "getByLabel": "label", 
+    "getByText": "text",
+    "getByTestId": "testId",
+    "getByPlaceholder": "placeholder",
+    "getByAltText": "altText",
+    "getByTitle": "title",
+    "locator": "css"
+  },
+  "filterTypes": ["hasText", "has", "hasNot"],
+  "variableStorageExamples": [
+    {
+      "description": "Extract text and use in another step",
+      "steps": [
+        {
+          "playwright": "const title = await page.locator('h1').textContent();",
+          "testflow": {"keyword": "getText", "locator": {"strategy": "css", "value": "h1"}, "store": {"pageTitle": "$text"}}
+        },
+        {
+          "playwright": "await page.fill('#search', title);",
+          "testflow": {"keyword": "fill", "locator": {"strategy": "css", "value": "#search"}, "value": "{{pageTitle}}"}
+        }
+      ]
+    },
+    {
+      "description": "Extract attribute and use in navigation",
+      "steps": [
+        {
+          "playwright": "const userId = await page.locator('#user').getAttribute('data-id');",
+          "testflow": {"keyword": "getAttribute", "value": "data-id", "locator": {"strategy": "css", "value": "#user"}, "store": {"userId": "$attribute"}}
+        },
+        {
+          "playwright": "await page.goto(`/user/${userId}`);",
+          "testflow": {"keyword": "goto", "value": "/user/{{userId}}"}
+        }
+      ]
+    }
+  ],
+  "conversionRules": {
+    "actions": {
+      "click()": "click",
+      "fill(value)": "fill",
+      "check()": "check", 
+      "uncheck()": "uncheck",
+      "selectOption(value)": "select",
+      "hover()": "hover",
+      "press(key)": "press",
+      "goto(url)": "goto",
+      "screenshot(options)": "screenshot",
+      "waitForTimeout(ms)": "waitForTimeout"
+    },
+    "assertions": {
+      "toBeVisible()": "assertVisible",
+      "toBeHidden()": "assertHidden", 
+      "toHaveText(text)": "assertHaveText",
+      "toHaveCount(count)": "assertHaveCount",
+      "toBeEnabled()": "assertEnabled",
+      "toBeDisabled()": "assertDisabled",
+      "toBeChecked()": "assertChecked"
+    },
+    "variableStorage": {
+      "textContent()": "getText",
+      "getAttribute(attr)": "getAttribute"
+    },
+    "customCode": {
+      "multiStep": "customCode",
+      "complexAssertion": "customCode",
+      "customWait": "customCode"
+    },
+    "variableUsage": {
+      "syntax": "{{variableName}}",
+      "scope": "suite-wide",
+      "storePaths": {
+        "getText": "$text",
+        "getAttribute": "$attribute",
+        "getTitle": "$title",
+        "getUrl": "$url",
+        "getValue": "$value",
+        "getCount": "$count"
+      }
+    }
+  }
+}
+    },
+    {
+      "input": "const title = await page.title();",
+      "output": {
+        "id": "step1",
+        "keyword": "getTitle",
+        "store": {
+          "pageTitle": "$title"
+        }
+      }
+    },
+    {
+      "input": "const url = page.url();",
+      "output": {
+        "id": "step1",
+        "keyword": "getUrl",
+        "store": {
+          "currentUrl": "$url"
+        }
+      }
+    },
+    {
+      "input": "const value = await page.locator('#input').inputValue();",
+      "output": {
+        "id": "step1",
+        "keyword": "getValue",
+        "locator": {
+          "strategy": "css",
+          "value": "#input"
+        },
+        "store": {
+          "inputValue": "$value"
+        }
+      }
+    },
+    {
+      "input": "const count = await page.locator('.item').count();",
+      "output": {
+        "id": "step1",
+        "keyword": "getCount",
+        "locator": {
+          "strategy": "css",
+          "value": ".item"
+        },
+        "store": {
+          "itemCount": "$count"
+        }
+      }
+    },
+    {
+      "input": "await page.getByRole('button').click({ button: 'right' });",
+      "output": {
+        "id": "step1",
+        "keyword": "rightClick",
+        "locator": {
+          "strategy": "role",
+          "value": "button"
+        }
+      }
+    },
+    {
+      "input": "await page.locator('#file').setInputFiles('path/to/file.pdf');",
+      "output": {
+        "id": "step1",
+        "keyword": "uploadFile",
+        "locator": {
+          "strategy": "css",
+          "value": "#file"
+        },
+        "value": "path/to/file.pdf"
+      }
+    },
+    {
+      "input": "await expect(page.getByRole('checkbox')).toBeChecked();",
+      "output": {
+        "id": "step1",
+        "keyword": "assertChecked",
+        "locator": {
+          "strategy": "role",
+          "value": "checkbox"
+        }
+      }
+    },
+    {
+      "input": "await expect(page).toHaveURL('https://example.com/dashboard');",
+      "output": {
+        "id": "step1",
+        "keyword": "assertUrl",
+        "value": "https://example.com/dashboard"
+      }
+    },
+    {
+      "input": "await expect(page).toHaveTitle('Dashboard');",
+      "output": {
+        "id": "step1",
+        "keyword": "assertTitle",
+        "value": "Dashboard"
+      }
+    }
+  ],
