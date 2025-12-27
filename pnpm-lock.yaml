@@ -27,7 +27,7 @@ importers:
         specifier: ^1.1.0
         version: 1.1.1(@browserbasehq/sdk@2.6.0)(@browserbasehq/stagehand@1.14.0(@playwright/test@1.57.0)(deepmerge@4.3.1)(dotenv@16.6.1)(openai@6.15.0(ws@8.18.3)(zod@3.25.76))(zod@3.25.76))(@ibm-cloud/watsonx-ai@1.7.5)(@langchain/core@0.3.80(openai@6.15.0(ws@8.18.3)(zod@3.25.76)))(ibm-cloud-sdk-core@5.4.5)(jsonwebtoken@9.0.3)(lodash@4.17.21)(openai@6.15.0(ws@8.18.3)(zod@3.25.76))(playwright@1.57.0)(ws@8.18.3)
       '@langchain/core':
-        specifier: ^0.3.21
+        specifier: ^0.3.80
         version: 0.3.80(openai@6.15.0(ws@8.18.3)(zod@3.25.76))
       '@langchain/ollama':
         specifier: ^0.1.2
