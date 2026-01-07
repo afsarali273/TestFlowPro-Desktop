@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { homedir } from 'os';
+import { getGitHubTokenPath, ensureTokenDirectory } from '@/lib/config/token-path';
 
 interface GitHubTokens {
   access_token: string;
@@ -18,20 +19,19 @@ interface DeviceCodeResponse {
   interval: number;
 }
 
-const tokenFile = path.join(process.cwd(), '.github-tokens.json');
 const GITHUB_CLIENT_ID = 'Iv1.b507a08c87ecfe98';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action } = body;
+    const { action, customTokenPath } = body;
 
     if (action === 'authenticate') {
       return await authenticateWithGitHub();
     } else if (action === 'check') {
-      return checkExistingToken();
+      return checkExistingToken(customTokenPath);
     } else if (action === 'clear') {
-      return clearTokens();
+      return clearTokens(customTokenPath);
     } else if (action === 'setToken') {
       return setManualToken(body);
     } else if (action === 'pollToken') {
@@ -112,8 +112,10 @@ async function pollForToken(deviceCode: string): Promise<string> {
   return data.access_token;
 }
 
-function checkExistingToken() {
+function checkExistingToken(customTokenPath?: string) {
   try {
+    const tokenFile = getGitHubTokenPath(customTokenPath);
+
     if (fs.existsSync(tokenFile)) {
       const tokens: GitHubTokens = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
       const isValid = !tokens.expires_at || Date.now() < tokens.expires_at;
@@ -133,8 +135,8 @@ function checkExistingToken() {
 
 async function pollTokenStatus(body: any) {
   try {
-    const { deviceCode } = body;
-    
+    const { deviceCode, customTokenPath } = body;
+
     if (!deviceCode) {
       return NextResponse.json({ error: 'Device code is required' }, { status: 400 });
     }
@@ -147,6 +149,8 @@ async function pollTokenStatus(body: any) {
       expires_at: Date.now() + (24 * 60 * 60 * 1000)
     };
     
+    const tokenFile = getGitHubTokenPath(customTokenPath);
+    await ensureTokenDirectory(tokenFile);
     fs.writeFileSync(tokenFile, JSON.stringify(tokens, null, 2));
     return NextResponse.json({ success: true, token });
   } catch (error: any) {
@@ -159,8 +163,8 @@ async function pollTokenStatus(body: any) {
 
 async function setManualToken(body: any) {
   try {
-    const { token } = body;
-    
+    const { token, customTokenPath } = body;
+
     if (!token) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
@@ -171,6 +175,8 @@ async function setManualToken(body: any) {
       expires_at: Date.now() + (24 * 60 * 60 * 1000)
     };
     
+    const tokenFile = getGitHubTokenPath(customTokenPath);
+    await ensureTokenDirectory(tokenFile);
     fs.writeFileSync(tokenFile, JSON.stringify(tokens, null, 2));
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -178,8 +184,10 @@ async function setManualToken(body: any) {
   }
 }
 
-function clearTokens() {
+function clearTokens(customTokenPath?: string) {
   try {
+    const tokenFile = getGitHubTokenPath(customTokenPath);
+
     if (fs.existsSync(tokenFile)) {
       fs.unlinkSync(tokenFile);
     }

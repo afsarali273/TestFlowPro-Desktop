@@ -3,14 +3,13 @@ import fs from 'fs';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'node:crypto';
+import { getGitHubTokenPath, ensureTokenDirectory } from '@/lib/config/token-path';
 
 interface GitHubTokens {
   access_token: string;
   token_type: string;
   expires_at?: number;
 }
-
-const tokenFile = path.join(process.cwd(), '.github-tokens.json');
 const COPILOT_VERSION = "0.26.7";
 const EDITOR_PLUGIN_VERSION = `copilot-chat/${COPILOT_VERSION}`;
 const USER_AGENT = `GitHubCopilotChat/${COPILOT_VERSION}`;
@@ -18,12 +17,13 @@ const API_VERSION = "2025-04-01";
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, type } = await request.json();
-    
+    const { message, type, customTokenPath } = await request.json();
+
     console.log('🚀 Copilot API Request:', {
       type,
       messageLength: message?.length || 0,
-      messagePreview: message?.substring(0, 100)
+      messagePreview: message?.substring(0, 100),
+      customTokenPath: customTokenPath ? 'provided' : 'default'
     });
     
     if (!message) {
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔑 Getting Copilot token...');
-    const token = await getCopilotToken();
+    const token = await getCopilotToken(customTokenPath);
     console.log('✅ Token retrieved, length:', token?.length || 0);
     
     const context = await getKnowledgeBaseContext(type, message);
@@ -124,13 +124,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getCopilotToken(): Promise<string> {
+async function getCopilotToken(customTokenPath?: string): Promise<string> {
   try {
     // Try to get token from GitHub Copilot apps.json first
     const response = await fetch('http://localhost:3000/api/github-auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'getValidToken' })
+      body: JSON.stringify({ action: 'getValidToken', customTokenPath })
     });
     
     if (response.ok) {
@@ -141,6 +141,8 @@ async function getCopilotToken(): Promise<string> {
     }
     
     // Fallback to local token file
+    const tokenFile = getGitHubTokenPath(customTokenPath);
+
     if (!fs.existsSync(tokenFile)) {
       throw new Error('GitHub token not found. Please authenticate first.');
     }

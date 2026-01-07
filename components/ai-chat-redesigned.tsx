@@ -13,6 +13,7 @@ import { AI_CONFIG } from '../ai-config'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { GitHubConfigModal } from '@/components/github-config-modal'
+import { TokenPathConfigModal } from '@/components/token-path-config-modal'
 
 interface Message {
   id: string
@@ -63,6 +64,13 @@ export function AIChat() {
     return ''
   })
   const [showSuiteModal, setShowSuiteModal] = useState(false)
+  const [showTokenPathConfig, setShowTokenPathConfig] = useState(false)
+  const [tokenPath, setTokenPath] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('githubTokenPath') || ''
+    }
+    return ''
+  })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -94,8 +102,8 @@ export function AIChat() {
   const checkGitHubAuth = async () => {
     try {
       const { GitHubAuthService } = await import('@/lib/services/githubAuth')
-      const authService = new GitHubAuthService()
-      
+      const authService = new GitHubAuthService(tokenPath || undefined)
+
       // Get stored path
       const storedPath = localStorage.getItem('githubCopilotPath')
       const pathToUse = copilotPath || storedPath
@@ -127,7 +135,7 @@ export function AIChat() {
     try {
       setIsLoading(true)
       const { GitHubAuthService } = await import('@/lib/services/githubAuth')
-      const authService = new GitHubAuthService()
+      const authService = new GitHubAuthService(tokenPath || undefined)
       const flow = await authService.startDeviceFlow()
       
       console.log('Device flow response:', flow)
@@ -196,7 +204,7 @@ export function AIChat() {
     try {
       setIsLoading(true)
       const { GitHubAuthService } = await import('@/lib/services/githubAuth')
-      const authService = new GitHubAuthService()
+      const authService = new GitHubAuthService(tokenPath || undefined)
       await authService.clearTokens()
       setGithubAuthStatus('not-authenticated')
       setDeviceFlow(null)
@@ -218,7 +226,7 @@ export function AIChat() {
     try {
       setIsLoading(true)
       const { GitHubAuthService } = await import('@/lib/services/githubAuth')
-      const authService = new GitHubAuthService()
+      const authService = new GitHubAuthService(tokenPath || undefined)
       await authService.setToken(githubToken)
       setGithubAuthStatus('authenticated')
       setShowTokenInput(false)
@@ -283,7 +291,8 @@ export function AIChat() {
         body: JSON.stringify({
           message: inputMessage,
           type: 'general',
-          provider: aiProvider
+          provider: aiProvider,
+          customTokenPath: tokenPath || undefined
         })
       })
 
@@ -914,7 +923,10 @@ export function AIChat() {
                               🔑 Manual Token
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => setShowGitHubConfig(true)} className="w-full h-8 text-xs">
-                              ⚙️ Configure Path
+                              ⚙️ Copilot Path
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setShowTokenPathConfig(true)} className="w-full h-8 text-xs">
+                              📂 Token Storage
                             </Button>
                           </div>
                         </div>
@@ -962,6 +974,26 @@ export function AIChat() {
                                 Cancel
                               </Button>
                             </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {aiProvider === 'github-copilot' && githubAuthStatus === 'authenticated' && (
+                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200 animate-in slide-in-from-top-2 duration-300">
+                          <div className="text-sm font-medium text-green-900 mb-3 flex items-center gap-2">
+                            ✅ Authenticated
+                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                          </div>
+                          <div className="space-y-2">
+                            <Button size="sm" variant="outline" onClick={() => setShowGitHubConfig(true)} className="w-full h-8 text-xs">
+                              ⚙️ Copilot Path
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setShowTokenPathConfig(true)} className="w-full h-8 text-xs">
+                              📂 Token Storage
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={handleReAuth} className="w-full h-8 text-xs">
+                              🔄 Re-authenticate
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -1567,7 +1599,7 @@ Be as detailed as possible for better test generation.`}
             // Auto-authenticate with the new path
             try {
               const { GitHubAuthService } = await import('@/lib/services/githubAuth')
-              const authService = new GitHubAuthService()
+              const authService = new GitHubAuthService(tokenPath || undefined)
               const token = await authService.getCopilotToken(path)
               
               if (token) {
@@ -1584,6 +1616,29 @@ Be as detailed as possible for better test generation.`}
         />
       )}
       
+      {/* Token Path Config Modal */}
+      {showTokenPathConfig && (
+        <TokenPathConfigModal
+          currentPath={tokenPath}
+          onSave={(path) => {
+            setTokenPath(path)
+            if (path) {
+              localStorage.setItem('githubTokenPath', path)
+            } else {
+              localStorage.removeItem('githubTokenPath')
+            }
+            setShowTokenPathConfig(false)
+            toast({
+              title: 'Success',
+              description: path ? 'Custom token path saved' : 'Using default token path'
+            })
+            // Re-check auth status with new path
+            checkGitHubAuth()
+          }}
+          onCancel={() => setShowTokenPathConfig(false)}
+        />
+      )}
+
       {/* Expanded Test Suite Modal */}
       {showSuiteModal && generatedSuite && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">

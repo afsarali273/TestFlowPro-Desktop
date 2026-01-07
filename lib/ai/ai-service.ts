@@ -9,8 +9,8 @@ import { SmartContextManager } from './smart-context-manager'
 import { CurlParser } from './curl-parser'
 import { TestSuite } from '@/types/test-suite'
 import { AI_CONFIG } from '@/ai-config'
+import { getGitHubTokenPath } from '@/lib/config/token-path'
 import fs from 'fs'
-import path from 'path'
 
 // Simple validation function
 function validateTestSuite(obj: any): TestSuite {
@@ -864,8 +864,8 @@ Return ONLY this JSON structure with NO explanations:
 
   private async getCopilotToken(): Promise<string> {
     try {
-      const tokenFile = path.join(process.cwd(), '.github-tokens.json');
-      
+      const tokenFile = getGitHubTokenPath();
+
       if (!fs.existsSync(tokenFile)) {
         throw new Error('GitHub token not found. Please authenticate first.');
       }

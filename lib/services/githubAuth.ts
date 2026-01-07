@@ -1,4 +1,10 @@
 export class GitHubAuthService {
+  private customTokenPath?: string;
+
+  constructor(customTokenPath?: string) {
+    this.customTokenPath = customTokenPath;
+  }
+
   async getCopilotToken(customPath?: string): Promise<string | null> {
     try {
       const response = await fetch('/api/github-auth', {
@@ -18,7 +24,7 @@ export class GitHubAuthService {
       const response = await fetch('/api/github-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'getValidToken' })
+        body: JSON.stringify({ action: 'getValidToken', customTokenPath: this.customTokenPath })
       });
       const data = await response.json();
       return data.token || null;
@@ -32,7 +38,7 @@ export class GitHubAuthService {
       const response = await fetch('/api/github-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'check' })
+        body: JSON.stringify({ action: 'check', customTokenPath: this.customTokenPath })
       });
       const data = await response.json();
       return { hasToken: data.hasToken, isValid: data.isValid };
@@ -61,7 +67,7 @@ export class GitHubAuthService {
     const response = await fetch('/api/github-auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'pollToken', deviceCode })
+      body: JSON.stringify({ action: 'pollToken', deviceCode, customTokenPath: this.customTokenPath })
     });
 
     const data = await response.json();
@@ -81,7 +87,7 @@ export class GitHubAuthService {
     const response = await fetch('/api/github-auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'setToken', token })
+      body: JSON.stringify({ action: 'setToken', token, customTokenPath: this.customTokenPath })
     });
 
     const data = await response.json();
@@ -95,7 +101,7 @@ export class GitHubAuthService {
     await fetch('/api/github-auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'clear' })
+      body: JSON.stringify({ action: 'clear', customTokenPath: this.customTokenPath })
     });
   }
 }
