@@ -99,6 +99,16 @@ export function AIChat() {
     }
   }, [aiProvider])
   
+  // Listen for external events to open AI chat (e.g., from dashboard)
+  useEffect(() => {
+    const handleOpenAIChat = () => {
+      setIsOpen(true)
+    }
+
+    window.addEventListener('open-ai-chat', handleOpenAIChat)
+    return () => window.removeEventListener('open-ai-chat', handleOpenAIChat)
+  }, [])
+
   const checkGitHubAuth = async () => {
     try {
       const { GitHubAuthService } = await import('@/lib/services/githubAuth')

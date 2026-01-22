@@ -25,6 +25,7 @@ import {
   FolderOpen,
   ToggleLeft,
   ToggleRight,
+  Rocket,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -56,6 +57,21 @@ import { PlaywrightImportModal } from "@/components/PlaywrightImportModal"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+
+// Phase 1: UI/UX Improvements
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
+import { useEnhancedToast } from "@/lib/toast-helpers"
+import { DashboardSkeleton } from "@/components/ui/skeletons"
+import { NoTestSuitesEmptyState, NoTestSuitesFound } from "@/components/ui/empty-states"
+import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help"
+
+// Phase 2: Core UX Features
+import { CommandPalette } from "@/components/command-palette"
+import { EnhancedDashboard } from "@/components/enhanced-dashboard"
+
+// Phase 3: Advanced Features
+import { OnboardingWizard, type OnboardingConfig } from "@/components/onboarding-wizard"
+import { ImportMenu } from "@/components/import-menu"
 
 import type { TestSuite } from "@/types/test-suite"
 
@@ -101,7 +117,21 @@ export default function APITestFramework() {
   const [isFrameworkConfigOpen, setIsFrameworkConfigOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Phase 1: UI/UX Improvements
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
+  const [isLoadingData, setIsLoadingData] = useState(true)
+
+  // Phase 2: Core UX Features
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
+  const [dashboardStats, setDashboardStats] = useState<any>(null)
+  const [showEnhancedDashboard, setShowEnhancedDashboard] = useState(false)
+
+  // Phase 3: Advanced Features
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showImportMenu, setShowImportMenu] = useState(false)
+
   const { toast } = useToast()
+  const enhancedToast = useEnhancedToast()
 
   // Fallback function to load test suites directly from filesystem
   const loadTestSuitesDirectly = async (dirPath: string) => {
@@ -135,6 +165,13 @@ export default function APITestFramework() {
     
     const savedPath = localStorage.getItem("testSuitePath")
     const savedFrameworkPath = localStorage.getItem("frameworkPath")
+    const onboardingCompleted = localStorage.getItem("onboardingCompleted")
+
+    // Phase 3: Show onboarding for first-time users
+    if (!onboardingCompleted && !savedPath) {
+      setShowOnboarding(true)
+      return
+    }
 
     if (savedPath) {
       setTestSuitePath(savedPath)
@@ -233,8 +270,150 @@ export default function APITestFramework() {
     }
   }, [testSuites])
 
+  // Phase 1: Keyboard Shortcuts
+  useKeyboardShortcuts([
+    {
+      key: 'k',
+      ctrl: true,
+      description: 'Open command palette',
+      action: () => setShowCommandPalette(true)
+    },
+    {
+      key: '?',
+      description: 'Show keyboard shortcuts help',
+      action: () => setShowKeyboardHelp(true)
+    },
+    {
+      key: 'n',
+      ctrl: true,
+      description: 'Create new test suite',
+      action: () => {
+        setSelectedSuite(null)
+        setIsEditing(true)
+      }
+    },
+    {
+      key: 'f',
+      ctrl: true,
+      description: 'Focus search',
+      action: () => {
+        document.querySelector<HTMLInputElement>('input[type="text"]')?.focus()
+      }
+    }
+  ])
+
+  // Phase 2: Command Palette Navigation Handler
+  const handleCommandNavigation = (action: string, data?: any) => {
+    switch (action) {
+      case 'new-suite':
+        setSelectedSuite(null)
+        setIsEditing(true)
+        break
+      case 'import-curl':
+        setShowCurlImportModal(true)
+        break
+      case 'import-swagger':
+        setShowSwaggerImportModal(true)
+        break
+      case 'import-postman':
+        setShowPostmanImportModal(true)
+        break
+      case 'import-bruno':
+        setShowBrunoImportModal(true)
+        break
+      case 'import-playwright':
+        setShowPlaywrightImportModal(true)
+        break
+      case 'run-all':
+        setShowRunAllSuitesModal(true)
+        break
+      case 'view-results':
+        setShowResultsDashboard(true)
+        break
+      case 'settings':
+        setIsPathConfigOpen(true)
+        break
+      case 'ai-chat':
+        // Dispatch event to open AI chat
+        const aiChatEvent = new CustomEvent('open-ai-chat')
+        window.dispatchEvent(aiChatEvent)
+        break
+      case 'env-variables':
+        setShowEnvVariablesModal(true)
+        break
+      case 'open-suite':
+        if (data) {
+          setSelectedSuite(data)
+          setIsEditing(true)
+        }
+        break
+      default:
+        console.log('Unknown command:', action)
+    }
+  }
+
+  // Phase 3: Onboarding Completion Handler
+  const handleOnboardingComplete = async (config: OnboardingConfig) => {
+    // Save paths
+    handlePathSave(config.testSuitePath)
+    handleFrameworkPathSave(config.frameworkPath)
+
+    // Mark onboarding as completed
+    localStorage.setItem('onboardingCompleted', 'true')
+
+    // Close onboarding
+    setShowOnboarding(false)
+
+    // Load test suites
+    await loadTestSuitesFromPath(config.testSuitePath)
+
+    // Show success message
+    enhancedToast.success(
+      'Setup Complete!',
+      'TestFlowPro is ready to use. Press ⌘K to get started quickly.'
+    )
+
+    // If sample data requested, could load samples here
+    if (config.loadSampleData) {
+      // TODO: Load sample test suites
+      enhancedToast.info(
+        'Sample Data',
+        'Sample test suites will be available in a future update.'
+      )
+    }
+  }
+
+  const handleOnboardingSkip = () => {
+    localStorage.setItem('onboardingCompleted', 'true')
+    setShowOnboarding(false)
+    setIsPathConfigOpen(true)
+  }
+
+  // Phase 2: Load Dashboard Stats
+  const loadDashboardStats = async () => {
+    try {
+      const url = testSuitePath
+        ? `/api/dashboard-stats?path=${encodeURIComponent(testSuitePath)}`
+        : '/api/dashboard-stats'
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        setDashboardStats(data)
+      }
+    } catch (error) {
+      console.error('Failed to load dashboard stats:', error)
+    }
+  }
+
+  // Load dashboard stats on mount and when test suites change
+  useEffect(() => {
+    if (testSuitePath) {
+      loadDashboardStats()
+    }
+  }, [testSuites, testSuitePath])
+
   const loadTestSuitesFromPath = async (path: string) => {
-    setIsLoading(true)
+    setIsLoadingData(true)
     try {
       const response = await fetch(`/api/test-suites?path=${encodeURIComponent(path)}`)
       
@@ -246,10 +425,11 @@ export default function APITestFramework() {
         }))
 
         setTestSuites(uniqueSuites)
-        toast({
-          title: "Test Suites Loaded",
-          description: `Loaded ${uniqueSuites.length} test suites from ${path}`,
-        })
+        // Phase 1: Enhanced success toast
+        enhancedToast.success(
+          "Test Suites Loaded",
+          `Loaded ${uniqueSuites.length} test suite${uniqueSuites.length !== 1 ? 's' : ''} successfully`
+        )
       } else {
         const errorText = await response.text()
         throw new Error(`API Error: ${response.status} ${errorText}`)
@@ -261,7 +441,7 @@ export default function APITestFramework() {
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setIsLoadingData(false)
     }
   }
 
@@ -371,12 +551,13 @@ export default function APITestFramework() {
       await loadTestSuitesFromPath(testSuitePath)
     }
 
-    toast({
-      title: "Test Suite Saved",
-      description: suite.filePath
-          ? `Test suite saved to ${suite.fileName || "file"}`
-          : "Test suite has been successfully saved.",
-    })
+    // Phase 1: Enhanced success toast
+    enhancedToast.success(
+      "Test Suite Saved",
+      suite.filePath
+        ? `Test suite saved to ${suite.fileName || "file"}`
+        : "Test suite has been successfully saved."
+    )
   }
 
   const handleDeleteSuite = (suite: TestSuite) => {
@@ -404,18 +585,19 @@ export default function APITestFramework() {
       // Remove from local state
       setTestSuites((prev) => prev.filter((s) => s.id !== suiteToDelete.id))
       
-      toast({
-        title: "Test Suite Deleted",
-        description: `Test suite "${suiteToDelete.suiteName}" and its JSON file have been permanently deleted.`,
-      })
-      
+      // Phase 1: Enhanced success toast
+      enhancedToast.success(
+        "Test Suite Deleted",
+        `"${suiteToDelete.suiteName}" has been permanently deleted.`
+      )
+
       setSuiteToDelete(null)
     } catch (error) {
-      toast({
-        title: "Delete Failed",
-        description: "Failed to delete the test suite file. Please try again.",
-        variant: "destructive",
-      })
+      // Phase 1: Enhanced error toast
+      enhancedToast.error(
+        "Delete Failed",
+        "Failed to delete the test suite file. Please try again."
+      )
     } finally {
       setIsDeleting(false)
     }
@@ -603,7 +785,17 @@ export default function APITestFramework() {
 
                 {/* Dashboard Toggle */}
                 <div className="flex items-center space-x-4">
-
+                  {/* Phase 2: Enhanced Dashboard Toggle */}
+                  {dashboardStats && (
+                    <Button
+                      variant={showEnhancedDashboard ? "default" : "outline"}
+                      onClick={() => setShowEnhancedDashboard(!showEnhancedDashboard)}
+                      className="h-10 px-4 transition-all duration-200 rounded-xl shadow-lg hover:shadow-xl"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      {showEnhancedDashboard ? 'Hide' : 'Show'} Analytics
+                    </Button>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -668,6 +860,13 @@ export default function APITestFramework() {
                         <DropdownMenuItem onClick={() => setShowEnvVariablesModal(true)}>
                           <Settings className="h-4 w-4 mr-2" />
                           Environment Variables
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          localStorage.removeItem('onboardingCompleted')
+                          setShowOnboarding(true)
+                        }}>
+                          <Rocket className="h-4 w-4 mr-2" />
+                          Restart Onboarding
                         </DropdownMenuItem>
 
                       </DropdownMenuContent>
@@ -791,6 +990,25 @@ export default function APITestFramework() {
             )}
 
             {/* Main Content Area */}
+
+            {/* Phase 2: Enhanced Dashboard */}
+            {showEnhancedDashboard && dashboardStats && (
+              <div className="mb-6">
+                <EnhancedDashboard
+                  stats={dashboardStats}
+                  recentActivity={dashboardStats.recentActivity || []}
+                  onCreateSuite={handleCreateSuite}
+                  onImport={() => setShowImportMenu(true)}
+                  onRunAll={() => setShowRunAllSuitesModal(true)}
+                  onAIGenerate={() => {
+                    // Dispatch event to open AI chat
+                    const event = new CustomEvent('open-ai-chat')
+                    window.dispatchEvent(event)
+                  }}
+                />
+              </div>
+            )}
+
               <div className="flex gap-6 xl:gap-8">
                 {/* Navigation Sidebar */}
                 <div className="w-80 xl:w-96 2xl:w-[400px] bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl">
@@ -1290,41 +1508,40 @@ export default function APITestFramework() {
                 </div>
               </div>
 
-            {/* Empty state */}
-            {!isLoading && filteredSuites.length === 0 && (
-                <div className="text-center py-16">
-                  <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100/80 to-indigo-100/80 backdrop-blur-sm rounded-2xl mb-6 shadow-xl">
-                    <FileText className="h-10 w-10 text-blue-600" />
-                  </div>
-                  <h3 className="text-base font-semibold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
-                    {searchTerm ? "No matching test suites" : "No test suites found"}
-                  </h3>
-                  <p className="text-slate-600 mb-8 max-w-md mx-auto">
-                    {searchTerm
-                        ? "Try adjusting your search criteria or browse all available test suites."
-                        : "Get started by creating your first test suite or configuring a test suite path to load existing suites."}
-                  </p>
-                  {!searchTerm && (
-                      <div className="flex items-center justify-center space-x-4">
-                        <Button
-                            onClick={handleCreateSuite}
-                            className="h-11 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create Test Suite
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsPathConfigOpen(true)}
-                            className="h-11 px-6 bg-white/60 hover:bg-white/80 border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 rounded-xl shadow-lg hover:shadow-xl"
-                        >
-                          <Settings className="h-4 w-4 mr-2" />
-                          Configure Path
-                        </Button>
-                      </div>
-                  )}
-                </div>
+            {/* Phase 1: Loading state with skeletons */}
+            {isLoadingData && (
+              <DashboardSkeleton />
             )}
+
+            {/* Phase 1: Empty state with actions */}
+            {!isLoadingData && filteredSuites.length === 0 && (
+              <>
+                {searchTerm || selectedApp || selectedFolder ? (
+                  <NoTestSuitesFound
+                    onClearFilters={() => {
+                      setSearchTerm("")
+                      setSelectedApp(null)
+                      setSelectedFolder(null)
+                    }}
+                  />
+                ) : (
+                  <NoTestSuitesEmptyState
+                    onCreateSuite={handleCreateSuite}
+                    onImport={() => {
+                      // Open import dropdown - you could set a state to show it
+                      document.querySelector<HTMLButtonElement>('[aria-label="Import menu"]')?.click()
+                    }}
+                    onAIGenerate={() => {
+                      // Open AI chat or show AI modal
+                      const aiButton = document.querySelector<HTMLButtonElement>('[title="AI Assistant"]')
+                      if (aiButton) aiButton.click()
+                    }}
+                  />
+                )}
+              </>
+            )}
+
+
           </div>
         </div>
 
@@ -1567,6 +1784,55 @@ export default function APITestFramework() {
         <EnvVariablesModal
           isOpen={showEnvVariablesModal}
           onClose={() => setShowEnvVariablesModal(false)}
+        />
+
+        {/* Phase 1: Keyboard Shortcuts Help Modal */}
+        <KeyboardShortcutsHelp
+          isOpen={showKeyboardHelp}
+          onClose={() => setShowKeyboardHelp(false)}
+        />
+
+        {/* Phase 2: Command Palette */}
+        <CommandPalette
+          isOpen={showCommandPalette}
+          onClose={() => setShowCommandPalette(false)}
+          testSuites={testSuites}
+          onNavigate={handleCommandNavigation}
+        />
+
+        {/* Phase 3: Onboarding Wizard */}
+        <OnboardingWizard
+          isOpen={showOnboarding}
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+        />
+
+        {/* Phase 3: Import Menu */}
+        <ImportMenu
+          isOpen={showImportMenu}
+          onClose={() => setShowImportMenu(false)}
+          onSelectImport={(type) => {
+            switch (type) {
+              case 'curl':
+                setShowCurlImportModal(true)
+                break
+              case 'swagger':
+                setShowSwaggerImportModal(true)
+                break
+              case 'postman':
+                setShowPostmanImportModal(true)
+                break
+              case 'bruno':
+                setShowBrunoImportModal(true)
+                break
+              case 'soap':
+                setShowSoapImportModal(true)
+                break
+              case 'playwright':
+                setShowPlaywrightImportModal(true)
+                break
+            }
+          }}
         />
       </>
   )
