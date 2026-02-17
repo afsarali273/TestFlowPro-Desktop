@@ -40,3 +40,8 @@ next-env.d.ts
 /release
 
 /dist-app
+
+# Ralph Loop validation temp files
+/.tmp
+/testSuites/.tmp
+

@@ -26,11 +26,11 @@ export const AI_CONFIG: AIConfig = {
   },
   github: {
     baseUrl: 'https://api.githubcopilot.com',
-    model: 'gpt-5 mini',
+    model: 'gpt-5-mini',  // Valid model: gpt-5-mini, gpt-4o, gpt-4, gpt-3.5-turbo, grok code fast 1
     maxTokens: 4096
   },
   defaults: {
-    provider: 'ollama',
+    provider: 'github-copilot',
     timeout: 30000
   },
   ui: {

@@ -34,7 +34,7 @@ interface DashboardStats {
 
 interface RecentActivity {
   suiteName: string
-  status: 'PASS' | 'FAIL'
+  status: 'PASS' | 'FAIL' | 'PENDING'
   timestamp: string
   duration?: number
   passed?: number
@@ -197,7 +197,7 @@ export function EnhancedDashboard({
                     <p className="text-sm font-medium truncate">{activity.suiteName}</p>
                     <p className="text-xs text-muted-foreground">
                       {activity.status === 'PENDING' ? 'Not yet run' : formatRelativeTime(activity.timestamp)}
-                      {activity.duration > 0 && ` • ${activity.duration}ms`}
+                      {typeof activity.duration === 'number' && activity.duration > 0 && ` • ${activity.duration}ms`}
                     </p>
                   </div>
                   <Badge

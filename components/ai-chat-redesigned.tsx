@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Bot, X, Send, Upload, FileText, Code, Globe, Sparkles, Copy, Check, RotateCcw, Play, Square, Download, Settings, Zap, Expand } from 'lucide-react'
+import { Bot, X, Send, Upload, FileText, Code, Globe, Sparkles, Copy, Check, RotateCcw, Play, Square, Download, Settings, Zap, Expand, Brain, ChevronDown, Cpu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { GitHubConfigModal } from '@/components/github-config-modal'
 import { TokenPathConfigModal } from '@/components/token-path-config-modal'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu'
 
 interface Message {
   id: string
@@ -71,6 +72,27 @@ export function AIChat() {
     }
     return ''
   })
+  const [selectedAIModel, setSelectedAIModel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('selectedAIModel') || 'gpt-4o'
+    }
+    return 'gpt-4o'
+  })
+  const [availableModels, setAvailableModels] = useState<any[]>([])
+
+  // MCP Server state
+  const [mcpServers, setMcpServers] = useState<any[]>([])
+  const [mcpTools, setMcpTools] = useState<any[]>([])
+  const [mcpStatuses, setMcpStatuses] = useState<Record<string, any>>({})
+  const [showMcpPanel, setShowMcpPanel] = useState(false)
+
+  // Agent Mode state
+  const [agentMode, setAgentMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('agentMode') === 'true'
+    }
+    return false
+  })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -108,6 +130,165 @@ export function AIChat() {
     window.addEventListener('open-ai-chat', handleOpenAIChat)
     return () => window.removeEventListener('open-ai-chat', handleOpenAIChat)
   }, [])
+
+  // Fetch available AI models
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await fetch('/api/ai-models')
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableModels(data.models || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch AI models:', error)
+        // Set default models on error
+        setAvailableModels([
+          { id: 'gpt-4.1', name: 'GPT-4.1', description: 'Latest GPT-4 with improved reasoning', tier: 'standard' },
+          { id: 'gpt-4o', name: 'GPT-4o', description: 'Optimized for speed & efficiency', tier: 'standard' },
+          { id: 'gpt-5-mini', name: 'GPT-5 Mini', description: 'Fast & lightweight GPT-5', tier: 'standard' },
+          { id: 'grok-code-fast-1', name: 'Grok Code Fast 1', description: 'High-speed code generation', tier: 'standard' },
+          { id: 'claude-sonnet-4.5', name: 'Claude Sonnet 4.5', description: 'Superior reasoning (Premium)', tier: 'premium' },
+          { id: 'gpt-5.1-codex-mini', name: 'GPT 5.1 Codex Mini', description: 'Specialized coding (Premium)', tier: 'premium' },
+          { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (Preview)', description: 'Ultra-fast Google AI (Premium)', tier: 'premium' }
+        ])
+      }
+    }
+
+    fetchModels()
+  }, [])
+
+  // Fetch MCP servers and tools
+  useEffect(() => {
+    const fetchMCPData = async () => {
+      try {
+        // Fetch servers
+        const serversRes = await fetch('/api/mcp-servers?action=list-servers')
+        if (serversRes.ok) {
+          const data = await serversRes.json()
+          setMcpServers(data.servers || [])
+        }
+
+        // Fetch statuses
+        const statusesRes = await fetch('/api/mcp-servers?action=all-statuses')
+        if (statusesRes.ok) {
+          const data = await statusesRes.json()
+          setMcpStatuses(data.statuses || {})
+
+          // Auto-connect TestFlowPro server if not connected
+          if (!data.statuses?.testflowpro?.connected) {
+            console.log('Auto-connecting TestFlowPro MCP server...')
+            setTimeout(() => connectMCPServer('testflowpro'), 1000)
+          }
+        }
+
+        // Fetch tools
+        const toolsRes = await fetch('/api/mcp-servers?action=list-tools')
+        if (toolsRes.ok) {
+          const data = await toolsRes.json()
+          setMcpTools(data.tools || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch MCP data:', error)
+      }
+    }
+
+    fetchMCPData()
+
+    // Refresh MCP data every 10 seconds
+    const interval = setInterval(fetchMCPData, 10000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const connectMCPServer = async (serverId: string) => {
+    try {
+      // Show connecting toast
+      toast({
+        title: 'Connecting MCP Server',
+        description: `Installing and connecting ${serverId}...`,
+      })
+
+      const response = await fetch('/api/mcp-servers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'connect', serverId })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        // Show success with tool count
+        toast({
+          title: '✅ MCP Server Connected',
+          description: `${serverId} connected with ${data.toolCount || 0} tools available`,
+        })
+
+        // Log available tools to console
+        if (data.tools && data.tools.length > 0) {
+          console.log(`📦 Available tools from ${serverId}:`, data.tools.map((t: any) => t.name))
+
+          // Show tools in a chat message
+          addMessage(
+            `✅ **${serverId} Connected!**\n\n` +
+            `📦 **${data.toolCount} Tools Available:**\n` +
+            data.tools.map((t: any, idx: number) => `${idx + 1}. **${t.name}** - ${t.description}`).join('\n') +
+            `\n\nYou can now ask me to use these tools!`,
+            'ai'
+          )
+        }
+
+        // Refresh statuses and tools
+        const [statusesRes, toolsRes] = await Promise.all([
+          fetch('/api/mcp-servers?action=all-statuses'),
+          fetch('/api/mcp-servers?action=list-tools')
+        ])
+
+        if (statusesRes.ok) {
+          const statusData = await statusesRes.json()
+          setMcpStatuses(statusData.statuses || {})
+        }
+
+        if (toolsRes.ok) {
+          const toolsData = await toolsRes.json()
+          setMcpTools(toolsData.tools || [])
+        }
+      } else {
+        throw new Error(data.error || 'Connection failed')
+      }
+    } catch (error: any) {
+      console.error('Failed to connect MCP server:', error)
+      toast({
+        title: '❌ Connection Failed',
+        description: error.message || 'Failed to connect to MCP server',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const disconnectMCPServer = async (serverId: string) => {
+    try {
+      const response = await fetch('/api/mcp-servers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'disconnect', serverId })
+      })
+
+      if (response.ok) {
+        toast({
+          title: 'MCP Server Disconnected',
+          description: `${serverId} disconnected`,
+        })
+
+        // Refresh statuses
+        const statusesRes = await fetch('/api/mcp-servers?action=all-statuses')
+        if (statusesRes.ok) {
+          const data = await statusesRes.json()
+          setMcpStatuses(data.statuses || {})
+        }
+      }
+    } catch (error) {
+      console.error('Failed to disconnect MCP server:', error)
+    }
+  }
 
   const checkGitHubAuth = async () => {
     try {
@@ -210,6 +391,51 @@ export function AIChat() {
     setTimeout(poll, 2000) // Start after 2 seconds
   }
   
+  const startTokenPolling = async (deviceCode: string, interval: number) => {
+    setIsPolling(true)
+
+    const poll = async () => {
+      try {
+        const response = await fetch('/api/copilot-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'poll-token',
+            deviceCode,
+            interval,
+            expiresIn: 900
+          })
+        })
+
+        const result = await response.json()
+
+        if (result.success) {
+          console.log('✅ SDK Authentication successful!')
+          setGithubAuthStatus('authenticated')
+          setDeviceFlow(null)
+          setIsPolling(false)
+          toast({ title: '✅ Success', description: 'GitHub Copilot authentication successful!' })
+
+          // Retry the original request that triggered auth
+          if (inputMessage) {
+            handleSendMessage()
+          }
+          return
+        }
+
+        // Continue polling
+        setTimeout(poll, interval * 1000)
+      } catch (error: any) {
+        console.error('Polling error:', error)
+        // Continue polling on errors
+        setTimeout(poll, interval * 1000)
+      }
+    }
+
+    // Start polling after initial delay
+    setTimeout(poll, interval * 1000)
+  }
+
   const handleReAuth = async () => {
     try {
       setIsLoading(true)
@@ -295,6 +521,7 @@ export function AIChat() {
     
     try {
       const endpoint = aiProvider === 'github-copilot' ? '/api/copilot-chat' : '/api/ai-chat'
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -302,12 +529,40 @@ export function AIChat() {
           message: inputMessage,
           type: 'general',
           provider: aiProvider,
-          customTokenPath: tokenPath || undefined
+          customTokenPath: tokenPath || undefined,
+          model: selectedAIModel,
+          agentMode: agentMode,
+          mcpTools: agentMode ? mcpTools : []
         })
       })
 
       if (!response.ok) {
         const errorData = await response.json()
+
+        // Handle authentication required
+        if (response.status === 401 && errorData.needsAuth && errorData.authInfo) {
+          setDeviceFlow({
+            userCode: errorData.authInfo.userCode,
+            verificationUri: errorData.authInfo.verificationUri,
+            deviceCode: errorData.authInfo.deviceCode
+          })
+          setIsLoading(false)
+          setInputMessage('')
+
+          // Show toast to guide user
+          toast({
+            title: 'Authentication Required',
+            description: `Please authorize using code: ${errorData.authInfo.userCode}`
+          })
+
+          // Auto-open GitHub auth page
+          window.open(errorData.authInfo.verificationUri, '_blank')
+
+          // Start polling for token
+          startTokenPolling(errorData.authInfo.deviceCode, errorData.authInfo.interval)
+          return
+        }
+
         let errorMessage = 'Sorry, I encountered an error. Please try again.'
         
         if (response.status === 402) {
@@ -372,13 +627,15 @@ export function AIChat() {
     setIsLoading(true)
     try {
       const endpoint = aiProvider === 'github-copilot' ? '/api/copilot-chat' : '/api/ai-chat'
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: curlCommand,
           type: 'curl',
-          provider: aiProvider
+          provider: aiProvider,
+          model: selectedAIModel
         })
       })
 
@@ -476,13 +733,15 @@ export function AIChat() {
     setIsLoading(true)
     try {
       const endpoint = aiProvider === 'github-copilot' ? '/api/copilot-chat' : '/api/ai-chat'
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: swaggerContent,
           type: 'swagger',
-          provider: aiProvider
+          provider: aiProvider,
+          model: selectedAIModel
         })
       })
 
@@ -523,13 +782,15 @@ export function AIChat() {
     setIsLoading(true)
     try {
       const endpoint = aiProvider === 'github-copilot' ? '/api/copilot-chat' : '/api/ai-chat'
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: uiSteps,
           type: 'ui',
-          provider: aiProvider
+          provider: aiProvider,
+          model: selectedAIModel
         })
       })
 
@@ -809,7 +1070,91 @@ export function AIChat() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Button 
+                  {/* Agent Mode Toggle */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 border border-white/20">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-white/80">
+                        {agentMode ? '🤖 Agent' : '💬 Ask'}
+                      </span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={agentMode}
+                          onChange={(e) => {
+                            const newMode = e.target.checked
+                            setAgentMode(newMode)
+                            localStorage.setItem('agentMode', String(newMode))
+                            toast({
+                              title: newMode ? '🤖 Agent Mode Enabled' : '💬 Ask Mode Enabled',
+                              description: newMode
+                                ? 'AI will automatically use MCP tools to complete tasks'
+                                : 'AI will provide guidance without using tools',
+                            })
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                      </label>
+                    </div>
+                    <div className="text-[10px] text-white/60 hidden md:block">
+                      {agentMode ? 'Auto Tools' : 'Manual'}
+                    </div>
+                  </div>
+
+                  {/* AI Model Selector */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all duration-200 hover:scale-105 flex items-center gap-2"
+                        title="Select AI Model"
+                      >
+                        <Brain className="h-4 w-4" />
+                        <span className="text-xs font-medium hidden sm:inline">
+                          {availableModels.find(m => m.id === selectedAIModel)?.name || selectedAIModel}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuRadioGroup
+                        value={selectedAIModel}
+                        onValueChange={(value) => {
+                          setSelectedAIModel(value)
+                          localStorage.setItem('selectedAIModel', value)
+                          toast({
+                            title: 'AI Model Updated',
+                            description: `Now using ${value}`,
+                          })
+                        }}
+                      >
+                        {availableModels.length > 0 ? (
+                          availableModels.map((model) => (
+                            <DropdownMenuRadioItem key={model.id} value={model.id}>
+                              <div className="flex flex-col w-full">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-medium">{model.name}</span>
+                                  {model.tier === 'premium' && (
+                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded">
+                                      PREMIUM
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-xs text-muted-foreground">{model.description}</span>
+                              </div>
+                            </DropdownMenuRadioItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            Loading models...
+                          </div>
+                        )}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Button
                     variant="ghost" 
                     size="icon" 
                     onClick={() => setShowProviderSettings(!showProviderSettings)} 
@@ -1005,6 +1350,102 @@ export function AIChat() {
                               🔄 Re-authenticate
                             </Button>
                           </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* MCP Servers Section */}
+                <div className="p-4 border-b border-slate-200/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-sm text-slate-800 flex items-center gap-2">
+                      <Cpu className="h-3 w-3 text-indigo-600" />
+                      MCP Servers
+                      {Object.values(mcpStatuses).filter((s: any) => s.connected).length > 0 && (
+                        <Badge variant="secondary" className="text-[10px] h-4">
+                          {Object.values(mcpStatuses).filter((s: any) => s.connected).length} Active
+                        </Badge>
+                      )}
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowMcpPanel(!showMcpPanel)}
+                      className="h-8 w-8 p-0 hover:bg-indigo-100 rounded-lg"
+                    >
+                      <div className={`transform transition-transform duration-200 ${showMcpPanel ? 'rotate-180' : ''}`}>
+                        ▼
+                      </div>
+                    </Button>
+                  </div>
+
+                  {showMcpPanel && (
+                    <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                      {/* Connected Servers */}
+                      {mcpServers.filter(s => mcpStatuses[s.id]?.connected).map(server => (
+                        <div key={server.id} className="bg-gradient-to-r from-green-50 to-emerald-50 p-2 rounded-lg border border-green-200">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">{server.icon}</span>
+                              <div>
+                                <div className="text-xs font-medium text-green-900">{server.name}</div>
+                                <div className="text-xs text-green-700">
+                                  {mcpStatuses[server.id]?.toolCount || 0} tools
+                                </div>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => disconnectMCPServer(server.id)}
+                              className="h-6 w-6 p-0 hover:bg-green-200"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Available but Disconnected Servers */}
+                      {mcpServers.filter(s => !mcpStatuses[s.id]?.connected && s.enabled).slice(0, 3).map(server => (
+                        <div key={server.id} className="bg-white p-2 rounded-lg border border-slate-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm opacity-50">{server.icon}</span>
+                              <div>
+                                <div className="text-xs font-medium text-slate-600">{server.name}</div>
+                                <div className="text-xs text-slate-500">Disconnected</div>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => connectMCPServer(server.id)}
+                              className="h-6 px-2 text-xs"
+                            >
+                              Connect
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Tools Summary */}
+                      {mcpTools.length > 0 && (
+                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-2 rounded-lg border border-indigo-200">
+                          <div className="text-xs font-medium text-indigo-900 mb-1">
+                            ⚡ {mcpTools.length} Tools Available
+                          </div>
+                          <div className="text-xs text-indigo-700">
+                            {mcpTools.slice(0, 3).map(t => t.name).join(', ')}
+                            {mcpTools.length > 3 && ` +${mcpTools.length - 3} more`}
+                          </div>
+                        </div>
+                      )}
+
+                      {Object.values(mcpStatuses).filter((s: any) => s.connected).length === 0 && (
+                        <div className="text-xs text-slate-500 text-center py-2">
+                          No MCP servers connected
                         </div>
                       )}
                     </div>

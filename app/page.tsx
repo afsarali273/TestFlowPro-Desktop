@@ -26,6 +26,8 @@ import {
   ToggleLeft,
   ToggleRight,
   Rocket,
+  Brain,
+  Check,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -54,7 +56,7 @@ import EnvVariablesModal from "@/components/EnvVariablesModal"
 import { SoapImportModal } from "@/components/SoapImportModal"
 import { PlaywrightImportModal } from "@/components/PlaywrightImportModal"
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 
@@ -129,6 +131,14 @@ export default function APITestFramework() {
   // Phase 3: Advanced Features
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showImportMenu, setShowImportMenu] = useState(false)
+  const [showMCPAgent, setShowMCPAgent] = useState(false)
+  const [selectedAIModel, setSelectedAIModel] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('selectedAIModel') || 'gpt-4o'
+    }
+    return 'gpt-4o'
+  })
+  const [availableModels, setAvailableModels] = useState<any[]>([])
 
   const { toast } = useToast()
   const enhancedToast = useEnhancedToast()
@@ -162,7 +172,21 @@ export default function APITestFramework() {
   // Load paths and test suites on mount
   useEffect(() => {
     if (typeof window === "undefined") return
-    
+
+    // Fetch available AI models
+    const fetchModels = async () => {
+      try {
+        const response = await fetch('/api/ai-models')
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableModels(data.models || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch AI models:', error)
+      }
+    }
+    fetchModels()
+
     const savedPath = localStorage.getItem("testSuitePath")
     const savedFrameworkPath = localStorage.getItem("frameworkPath")
     const onboardingCompleted = localStorage.getItem("onboardingCompleted")
@@ -861,6 +885,34 @@ export default function APITestFramework() {
                           <Settings className="h-4 w-4 mr-2" />
                           Environment Variables
                         </DropdownMenuItem>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            <Brain className="h-4 w-4 mr-2" />
+                            AI Model
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuRadioGroup
+                              value={selectedAIModel}
+                              onValueChange={(value) => {
+                                setSelectedAIModel(value)
+                                localStorage.setItem('selectedAIModel', value)
+                                enhancedToast.success('AI Model Updated', `Now using ${value}`)
+                              }}
+                            >
+                              {availableModels.length > 0 ? (
+                                availableModels.map((model) => (
+                                  <DropdownMenuRadioItem key={model.id} value={model.id}>
+                                    {model.name}
+                                  </DropdownMenuRadioItem>
+                                ))
+                              ) : (
+                                <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                  Loading models...
+                                </div>
+                              )}
+                            </DropdownMenuRadioGroup>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
                         <DropdownMenuItem onClick={() => {
                           localStorage.removeItem('onboardingCompleted')
                           setShowOnboarding(true)
@@ -883,6 +935,14 @@ export default function APITestFramework() {
                   </div>
                   
                   <Input type="file" accept=".json" onChange={handleImportSuite} className="hidden" id="import-file" />
+
+                  <Button
+                      onClick={() => window.location.href = '/ralph-loop'}
+                      className="h-10 px-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+                  >
+                    <Rocket className="h-4 w-4 mr-2" />
+                    Ralph Loop
+                  </Button>
 
                   <Button
                       onClick={handleCreateSuite}
@@ -1592,7 +1652,7 @@ export default function APITestFramework() {
         
         {/* AI Chat Component */}
         <AIChat />
-        
+
         {/* Delete Confirmation Dialog */}
         {suiteToDelete && (
           <DeleteConfirmationDialog
