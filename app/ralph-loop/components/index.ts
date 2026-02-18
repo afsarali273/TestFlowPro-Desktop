@@ -1,5 +1,8 @@
 export { RalphLoopHeader } from './RalphLoopHeader'
 export { PlanTab } from './PlanTab'
+export { PlanModeSelector } from './PlanModeSelector'
+export { ExplorationReport } from './ExplorationReport'
+export { TasksBreakdown } from './TasksBreakdown'
 export { ExecuteTab } from './ExecuteTab'
 export { GenerateCodeTab } from './GenerateCodeTab'
 export { LearningTab } from './LearningTab'

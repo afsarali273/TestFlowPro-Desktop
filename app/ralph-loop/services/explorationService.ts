@@ -186,19 +186,19 @@ function generateExplorationSummary(
   const timestamp = new Date().toLocaleString()
 
   let summary = `# 🔍 AI Exploration Report\n\n`
-  summary += `> **Website:** ${url}  \n`
-  summary += `> **Generated:** ${timestamp}  \n`
-  summary += `> **Total Scenarios:** ${scenarios.length}\n\n`
+  summary += `**Website:** [${url}](${url})  \n`
+  summary += `**Generated:** ${timestamp}  \n`
+  summary += `**Total Scenarios Discovered:** **${scenarios.length}** test scenarios\n\n`
 
   summary += `---\n\n`
 
   if (context?.trim()) {
     summary += `## 📋 Exploration Context\n\n`
-    summary += `\`\`\`\n${context}\n\`\`\`\n\n`
+    summary += `> ${context.split('\n').join('\n> ')}\n\n`
   }
 
-  // Discovery Summary with Table
-  summary += `## 📊 Discovery Summary\n\n`
+  // Discovery Summary with Enhanced Table
+  summary += `## 📊 Executive Summary\n\n`
 
   const categoryCount: Record<string, number> = {}
   const priorityCount: Record<string, number> = { high: 0, medium: 0, low: 0 }
@@ -208,23 +208,27 @@ function generateExplorationSummary(
     priorityCount[s.priority] = (priorityCount[s.priority] || 0) + 1
   })
 
-  // Summary Table
-  summary += `| Metric | Value |\n`
-  summary += `|--------|-------|\n`
-  summary += `| 🎯 **Total Scenarios** | ${scenarios.length} |\n`
-  summary += `| 📁 **Categories** | ${Object.keys(categoryCount).length} |\n`
-  summary += `| 🔴 **High Priority** | ${priorityCount.high} |\n`
-  summary += `| 🟡 **Medium Priority** | ${priorityCount.medium} |\n`
-  summary += `| 🟢 **Low Priority** | ${priorityCount.low} |\n\n`
+  // Enhanced Summary Table with Bold Headers
+  summary += `| 📌 Metric | 📈 Value | 📊 Details |\n`
+  summary += `|-----------|----------|------------|\n`
+  summary += `| **Total Test Scenarios** | **${scenarios.length}** | Comprehensive test coverage |\n`
+  summary += `| **Test Categories** | **${Object.keys(categoryCount).length}** | Distinct testing areas |\n`
+  summary += `| **🔴 High Priority** | **${priorityCount.high}** | Critical tests |\n`
+  summary += `| **🟡 Medium Priority** | **${priorityCount.medium}** | Important tests |\n`
+  summary += `| **🟢 Low Priority** | **${priorityCount.low}** | Optional tests |\n\n`
 
-  // Category Breakdown Table
+  // Enhanced Category Breakdown Table
   if (Object.keys(categoryCount).length > 0) {
-    summary += `### 📂 Category Breakdown\n\n`
-    summary += `| Category | Scenarios | Percentage |\n`
-    summary += `|----------|-----------|------------|\n`
+    summary += `## 📂 Test Category Breakdown\n\n`
+    summary += `| 📦 Category | 🔢 Scenarios | 📊 Coverage | 📈 Priority Split |\n`
+    summary += `|-------------|--------------|-------------|-------------------|\n`
     Object.entries(categoryCount).forEach(([category, count]) => {
       const percentage = ((count / scenarios.length) * 100).toFixed(1)
-      summary += `| ${category} | ${count} | ${percentage}% |\n`
+      const categoryScenarios = scenarios.filter(s => s.category === category)
+      const highP = categoryScenarios.filter(s => s.priority === 'high').length
+      const medP = categoryScenarios.filter(s => s.priority === 'medium').length
+      const lowP = categoryScenarios.filter(s => s.priority === 'low').length
+      summary += `| **${category}** | **${count}** | ${percentage}% | 🔴${highP} 🟡${medP} 🟢${lowP} |\n`
     })
     summary += `\n`
   }
@@ -238,67 +242,85 @@ function generateExplorationSummary(
     return acc
   }, {} as Record<string, any[]>)
 
-  summary += `## 🎯 Discovered Test Scenarios\n\n`
+  summary += `## 🎯 Detailed Test Scenarios\n\n`
+  summary += `Below are all discovered test scenarios organized by category. Each scenario includes priority, description, and detailed test steps.\n\n`
 
   Object.entries(scenariosByCategory).forEach(([category, categoryScenarios]) => {
     summary += `### 📦 ${category}\n\n`
+    summary += `**${categoryScenarios.length}** scenario(s) in this category\n\n`
 
     categoryScenarios.forEach((scenario: any, idx: number) => {
       const priorityEmoji = scenario.priority === 'high' ? '🔴' : scenario.priority === 'medium' ? '🟡' : '🟢'
-      const priorityBadge = scenario.priority === 'high' ? 'HIGH' : scenario.priority === 'medium' ? 'MEDIUM' : 'LOW'
+      const priorityText = scenario.priority === 'high' ? 'HIGH PRIORITY' : scenario.priority === 'medium' ? 'MEDIUM PRIORITY' : 'LOW PRIORITY'
 
       summary += `#### ${idx + 1}. ${scenario.title} ${priorityEmoji}\n\n`
 
-      // Scenario Details Table
-      summary += `| | |\n`
-      summary += `|---------|--------|\n`
-      summary += `| **Priority** | \`${priorityBadge}\` ${priorityEmoji} |\n`
-      summary += `| **Page** | ${scenario.page} |\n`
-      summary += `| **Category** | ${scenario.category} |\n\n`
+      // Enhanced Scenario Details Table
+      summary += `| 📋 Attribute | 📝 Value |\n`
+      summary += `|--------------|----------|\n`
+      summary += `| **Priority** | \`${priorityText}\` ${priorityEmoji} |\n`
+      summary += `| **Target Page** | ${scenario.page} |\n`
+      summary += `| **Category** | ${scenario.category} |\n`
+      summary += `| **Test Steps** | ${scenario.steps.length} steps |\n\n`
 
-      summary += `**📝 Description:**  \n${scenario.description}\n\n`
+      summary += `**📝 Scenario Description:**\n\n`
+      summary += `${scenario.description}\n\n`
 
-      summary += `**✅ Test Steps:**\n\n`
+      summary += `**✅ Detailed Test Steps:**\n\n`
       scenario.steps.forEach((step: string, stepIdx: number) => {
-        summary += `${stepIdx + 1}. ${step}\n`
+        summary += `${stepIdx + 1}. **${step}**\n`
       })
       summary += `\n`
+
+      summary += `---\n\n`
     })
   })
 
+  summary += `## 🛠️ Recommended Next Steps\n\n`
+  summary += `Follow these steps to execute your test scenarios:\n\n`
+  summary += `| # | ⚡ Action | 📝 Description | 🎯 Purpose |\n`
+  summary += `|---|----------|----------------|------------|\n`
+  summary += `| 1️⃣ | **Review Scenarios** | Check all discovered scenarios above | Understand test coverage |\n`
+  summary += `| 2️⃣ | **Edit & Customize** | Use ✏️ pencil icon to modify tasks | Tailor to your needs |\n`
+  summary += `| 3️⃣ | **Add More Tests** | Click + button to create scenarios | Enhance coverage |\n`
+  summary += `| 4️⃣ | **Prioritize** | Drag & drop 🔄 to reorder tasks | Set execution order |\n`
+  summary += `| 5️⃣ | **Execute Tests** | Click ▶️ "Start Execution" button | Run automated tests |\n\n`
+
+  summary += `> 💡 **Pro Tip:** All discovered scenarios have been automatically converted to executable tasks in the "Tasks Breakdown" section below. You can edit, delete, or reorder them before starting execution.\n\n`
+
   summary += `---\n\n`
 
-  summary += `## 🛠️ Next Steps\n\n`
-  summary += `| Step | Action | Description |\n`
-  summary += `|------|--------|-------------|\n`
-  summary += `| 1️⃣ | **Review** | Check discovered scenarios above |\n`
-  summary += `| 2️⃣ | **Edit** | Modify tasks using pencil icon ✏️ |\n`
-  summary += `| 3️⃣ | **Add** | Create additional scenarios with + button |\n`
-  summary += `| 4️⃣ | **Reorder** | Drag & drop to prioritize 🔄 |\n`
-  summary += `| 5️⃣ | **Execute** | Click "Start Execution" to run tests ▶️ |\n\n`
+  summary += `## 📊 Test Coverage Analysis\n\n`
 
-  summary += `> 💡 **Tip:** All scenarios have been converted to executable tasks below. You can edit, delete, or reorder them before execution.\n\n`
+  // Priority Distribution Table
+  summary += `### 🎯 Priority Distribution\n\n`
+  const total = priorityCount.high + priorityCount.medium + priorityCount.low
+  const highPercent = total > 0 ? ((priorityCount.high / total) * 100).toFixed(1) : '0'
+  const mediumPercent = total > 0 ? ((priorityCount.medium / total) * 100).toFixed(1) : '0'
+  const lowPercent = total > 0 ? ((priorityCount.low / total) * 100).toFixed(1) : '0'
 
-  summary += `---\n\n`
+  summary += `| Priority Level | Count | Percentage | Visual |\n`
+  summary += `|----------------|-------|------------|--------|\n`
+  summary += `| 🔴 **High Priority** | **${priorityCount.high}** | ${highPercent}% | ${'█'.repeat(Math.min(priorityCount.high, 20))} |\n`
+  summary += `| 🟡 **Medium Priority** | **${priorityCount.medium}** | ${mediumPercent}% | ${'█'.repeat(Math.min(priorityCount.medium, 20))} |\n`
+  summary += `| 🟢 **Low Priority** | **${priorityCount.low}** | ${lowPercent}% | ${'█'.repeat(Math.min(priorityCount.low, 20))} |\n\n`
 
-  summary += `## 📊 Coverage Analysis\n\n`
-  summary += `### Priority Distribution\n\n`
-  summary += `\`\`\`\n`
-  summary += `High Priority   (🔴): ${'█'.repeat(priorityCount.high * 2)} ${priorityCount.high}\n`
-  summary += `Medium Priority (🟡): ${'█'.repeat(priorityCount.medium * 2)} ${priorityCount.medium}\n`
-  summary += `Low Priority    (🟢): ${'█'.repeat(priorityCount.low * 2)} ${priorityCount.low}\n`
-  summary += `\`\`\`\n\n`
+  summary += `**Total Test Scenarios:** **${total}**\n\n`
 
   summary += `---\n\n`
 
   summary += `<details>\n`
-  summary += `<summary>📝 <strong>View Raw Exploration Details</strong> (Click to expand)</summary>\n\n`
+  summary += `<summary><strong>📝 View Raw Exploration Data</strong> (Click to expand)</summary>\n\n`
   summary += `### AI Exploration Log\n\n`
-  summary += `\`\`\`json\n${rawExploration.substring(0, 2000)}${rawExploration.length > 2000 ? '\n...(truncated)' : ''}\n\`\`\`\n\n`
+  summary += `Below is the raw data collected during AI exploration:\n\n`
+  summary += `\`\`\`json\n${rawExploration.substring(0, 2000)}${rawExploration.length > 2000 ? '\n...(truncated for brevity)' : ''}\n\`\`\`\n\n`
   summary += `</details>\n\n`
 
   summary += `---\n\n`
-  summary += `*Generated by TestFlowPro MCP Agent using Playwright exploration capabilities* 🤖✨\n`
+  summary += `<div align="center">\n\n`
+  summary += `**🤖 Generated by TestFlowPro MCP Agent**\n\n`
+  summary += `*Powered by Playwright Browser Automation & AI Intelligence* ✨\n\n`
+  summary += `</div>\n`
 
   return summary
 }
