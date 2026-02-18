@@ -540,6 +540,13 @@ Generate a complete Gherkin feature file with:
 Output ONLY the Gherkin feature file. No explanations.`
     }
 
+    // Generate dynamic class name from plan title or requirements
+    const className = (state.currentPlan?.title ||
+                      state.requirementsInput.split('\n')[0].slice(0, 30) ||
+                      'PlaywrightTest')
+                      .replace(/[^a-zA-Z0-9]/g, '')
+                      .replace(/^[0-9]/, 'Test$&') || 'PlaywrightTest'
+
     if (effectiveType === 'java') {
       return `Generate a COMPLETE Java (Playwright) test file based on the context below.
 
@@ -547,17 +554,26 @@ Context:
 ${context}
 
 CRITICAL REQUIREMENTS:
-1. Output a FULL Java file (imports + class + main method).
+1. Output a FULL Java file (imports + public class ${className} + main method).
 2. Use: import com.microsoft.playwright.*;
 3. Use try-with-resources for Playwright.create().
 4. Use BrowserType.LaunchOptions().setHeadless(false).
 5. Use semantic locators (getByRole, getByText, getByLabel, getByPlaceholder, getByTestId).
 6. If a locator might match multiple elements, use .first().
 7. Include waits (page.waitForLoadState(), locator.waitFor()).
-8. Handle dialogs: page.onDialog(dialog -> dialog.accept());
+8. Handle dialogs if needed: page.onDialog(dialog -> dialog.accept());
 9. Add assertions where sensible.
 10. Output ONLY valid Java code. No markdown, no explanations.`
     }
+
+    // Generate dynamic function name from plan title or requirements
+    const functionName = 'test_' + (state.currentPlan?.title ||
+                                    state.requirementsInput.split('\n')[0].slice(0, 30) ||
+                                    'generated')
+                                    .toLowerCase()
+                                    .replace(/[^a-z0-9]/g, '_')
+                                    .replace(/_+/g, '_')
+                                    .replace(/^_|_$/g, '') || 'test_generated'
 
     if (effectiveType === 'python') {
       return `Generate a COMPLETE Python (Playwright) test file based on the context below.
@@ -566,17 +582,22 @@ Context:
 ${context}
 
 CRITICAL REQUIREMENTS:
-1. Output a FULL Python file (imports + test function).
+1. Output a FULL Python file (imports + def ${functionName}() function).
 2. Use: from playwright.sync_api import sync_playwright, expect
 3. Use sync_playwright() context manager.
 4. Launch with headless=False.
 5. Use semantic locators (get_by_role, get_by_text, get_by_label, get_by_placeholder, get_by_test_id).
 6. If a locator might match multiple elements, use .first.
 7. Include waits (page.wait_for_load_state(), locator.wait_for()).
-8. Handle dialogs: page.on("dialog", lambda dialog: dialog.accept())
+8. Handle dialogs if needed: page.on("dialog", lambda dialog: dialog.accept())
 9. Add expect() assertions where sensible.
 10. Output ONLY valid Python code. No markdown, no explanations.`
     }
+
+    // Generate dynamic test name from plan title or requirements
+    const testName = state.currentPlan?.title ||
+                     state.requirementsInput.split('\n')[0].slice(0, 50) ||
+                     'Generated Test'
 
     return `Generate a COMPLETE TypeScript (Playwright) test file based on the context below.
 
@@ -586,12 +607,12 @@ ${context}
 CRITICAL REQUIREMENTS:
 1. Output a FULL Playwright test file (imports + test wrapper + body).
 2. Use: import { test, expect } from '@playwright/test';
-3. Use: test('Ralph Loop Validation', async ({ page }) => { ... });
+3. Use: test('${testName.trim()}', async ({ page }) => { ... });
 4. Ensure ALL parentheses (), braces {}, and brackets [] are CLOSED.
 5. Use semantic locators (getByRole, getByText, getByLabel, getByPlaceholder, getByTestId).
 6. If a locator might match multiple elements, add .first() or use exact: true.
 7. Include waits (await page.waitForLoadState(), await element.waitFor()).
-8. Handle dialogs: page.on('dialog', dialog => dialog.accept()).
+8. Handle dialogs: page.on('dialog', dialog => dialog.accept()) at the start of the test if needed.
 9. Add expect() assertions where sensible.
 10. ALL async operations MUST use await.
 11. Output ONLY valid TypeScript code. No markdown, no explanations.`
