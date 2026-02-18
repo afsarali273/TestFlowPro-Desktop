@@ -832,146 +832,111 @@ export default function APITestFramework() {
                   </div>
                 </div>
 
-                {/* Dashboard Toggle */}
-                <div className="flex items-center space-x-4">
-                  {/* Phase 2: Enhanced Dashboard Toggle */}
-                  {dashboardStats && (
-                    <Button
-                      variant={showEnhancedDashboard ? "default" : "outline"}
-                      onClick={() => setShowEnhancedDashboard(!showEnhancedDashboard)}
-                      className="h-10 px-4 transition-all duration-200 rounded-xl shadow-lg hover:shadow-xl"
-                    >
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      {showEnhancedDashboard ? 'Hide' : 'Show'} Analytics
-                    </Button>
-                  )}
-                </div>
-
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-3">
-                  <Button
-                      variant="outline"
-                      onClick={() => setShowResultsDashboard(true)}
-                      className="h-10 px-4 bg-white/60 hover:bg-white/80 border-slate-200 hover:border-slate-300 transition-all duration-200 rounded-xl shadow-lg hover:shadow-xl"
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Test Reports
-                  </Button>
-
-                  <div className="h-6 w-px bg-slate-300/50"></div>
-
-                  <div className="flex items-center space-x-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="outline"
-                            className="h-10 px-4 bg-white/60 hover:bg-white/80 border-slate-200 hover:border-slate-300 transition-all duration-200 rounded-xl shadow-lg hover:shadow-xl"
-                        >
-                          <Settings className="h-4 w-4 mr-2" />
-                          Settings
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={() => setIsFrameworkConfigOpen(true)}>
-                          <Settings className="h-4 w-4 mr-2" />
-                          Framework Path
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="h-10 px-4 bg-white/60 hover:bg-white/80 border-slate-200 hover:border-slate-300 transition-all duration-200 rounded-xl shadow-lg hover:shadow-xl"
+                      >
+                        <ChevronDown className="h-4 w-4 mr-2" />
+                        Actions
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem onClick={() => setShowResultsDashboard(true)}>
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Test Reports
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setShowRunAllSuitesModal(true)}
+                        disabled={!frameworkPath}
+                      >
+                        <PlayCircle className="h-4 w-4 mr-2" />
+                        Run All Suites
+                      </DropdownMenuItem>
+                      {dashboardStats && (
+                        <DropdownMenuItem onClick={() => setShowEnhancedDashboard(!showEnhancedDashboard)}>
+                          <BarChart3 className="h-4 w-4 mr-2" />
+                          {showEnhancedDashboard ? "Hide" : "Show"} Analytics
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setIsPathConfigOpen(true)}>
-                          <Settings className="h-4 w-4 mr-2" />
-                          Suites Path
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => document.getElementById("import-file")?.click()}>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Import JSON
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setShowSwaggerImportModal(true)}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Import Swagger
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setShowPostmanImportModal(true)}>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Import Postman
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setShowBrunoImportModal(true)}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Import Bruno
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setShowSoapImportModal(true)}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Import SOAP
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setShowPlaywrightImportModal(true)}>
-                          <MousePointer className="h-4 w-4 mr-2" />
-                          Import Playwright
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setShowEnvVariablesModal(true)}>
-                          <Settings className="h-4 w-4 mr-2" />
-                          Environment Variables
-                        </DropdownMenuItem>
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>
-                            <Brain className="h-4 w-4 mr-2" />
-                            AI Model
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuRadioGroup
-                              value={selectedAIModel}
-                              onValueChange={(value) => {
-                                setSelectedAIModel(value)
-                                localStorage.setItem('selectedAIModel', value)
-                                enhancedToast.success('AI Model Updated', `Now using ${value}`)
-                              }}
-                            >
-                              {availableModels.length > 0 ? (
-                                availableModels.map((model) => (
-                                  <DropdownMenuRadioItem key={model.id} value={model.id}>
-                                    {model.name}
-                                  </DropdownMenuRadioItem>
-                                ))
-                              ) : (
-                                <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                                  Loading models...
-                                </div>
-                              )}
-                            </DropdownMenuRadioGroup>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        <DropdownMenuItem onClick={() => {
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setShowImportMenu(true)}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Import Suite
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowCurlImportModal(true)}>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Import cURL
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setIsFrameworkConfigOpen(true)}>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Framework Path
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsPathConfigOpen(true)}>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Suites Path
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowEnvVariablesModal(true)}>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Environment Variables
+                      </DropdownMenuItem>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <Brain className="h-4 w-4 mr-2" />
+                          AI Model
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuRadioGroup
+                            value={selectedAIModel}
+                            onValueChange={(value) => {
+                              setSelectedAIModel(value)
+                              localStorage.setItem('selectedAIModel', value)
+                              enhancedToast.success('AI Model Updated', `Now using ${value}`)
+                            }}
+                          >
+                            {availableModels.length > 0 ? (
+                              availableModels.map((model) => (
+                                <DropdownMenuRadioItem key={model.id} value={model.id}>
+                                  {model.name}
+                                </DropdownMenuRadioItem>
+                              ))
+                            ) : (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                Loading models...
+                              </div>
+                            )}
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                      <DropdownMenuItem
+                        onClick={() => {
                           localStorage.removeItem('onboardingCompleted')
                           setShowOnboarding(true)
-                        }}>
-                          <Rocket className="h-4 w-4 mr-2" />
-                          Restart Onboarding
-                        </DropdownMenuItem>
+                        }}
+                      >
+                        <Rocket className="h-4 w-4 mr-2" />
+                        Restart Onboarding
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    
-                    <Button
-                        variant="outline"
-                        onClick={() => setShowCurlImportModal(true)}
-                        className="h-10 px-4 bg-white/60 hover:bg-white/80 border-slate-200 hover:border-slate-300 transition-all duration-200 rounded-xl shadow-lg hover:shadow-xl"
-                    >
-                      <Zap className="h-4 w-4 mr-2" />
-                      cURL
-                    </Button>
-                  </div>
-                  
                   <Input type="file" accept=".json" onChange={handleImportSuite} className="hidden" id="import-file" />
 
                   <Button
-                      onClick={() => window.location.href = '/ralph-loop'}
-                      className="h-10 px-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+                    onClick={() => window.location.href = '/ralph-loop'}
+                    className="h-10 px-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
                   >
                     <Rocket className="h-4 w-4 mr-2" />
-                    Ralph Loop
+                    MCP Agent
                   </Button>
 
                   <Button
-                      onClick={handleCreateSuite}
-                      className="h-10 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+                    onClick={handleCreateSuite}
+                    className="h-10 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     New Test Suite
@@ -1309,287 +1274,287 @@ export default function APITestFramework() {
                   ? "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4 xl:gap-6 content-start" 
                   : "space-y-4"
                 }`}>
-                {filteredSuites.map((suite) => {
-                const isUISuite = suite.type === "UI"
-                const totalSteps = isUISuite 
-                  ? suite.testCases.reduce((acc, tc) => acc + (tc.testSteps?.length || 0), 0)
-                  : suite.testCases.reduce((acc, tc) => acc + (tc.testData?.length || 0), 0)
-                
-                return (
-                  <Card
-                      key={suite.id}
-                      className={`group hover:shadow-2xl transition-all duration-300 border-0 shadow-xl bg-white/80 backdrop-blur-xl hover:bg-white/90 rounded-xl overflow-hidden ${
-                        isUISuite ? 'border-l-4 border-l-violet-500' : 'border-l-4 border-l-slate-500'
-                      } ${viewMode === 'list' ? 'flex flex-row' : ''}`}
-                  >
-                    <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-blue-50/50">
-                      {/* Title Row - Full Width */}
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <CardTitle className="text-sm font-semibold text-slate-900 group-hover:text-slate-700 transition-colors duration-200 flex-1">
-                            {suite.suiteName}
-                          </CardTitle>
-                          <Badge className={`${getStatusBadge(suite.status || "Not Started")} font-medium px-3 py-1 flex-shrink-0`}>
-                            {suite.status}
-                          </Badge>
-                        </div>
-                        <Badge 
-                          variant="outline" 
-                          className={`text-xs font-medium ${
-                            isUISuite 
-                              ? 'bg-violet-50 text-violet-700 border-violet-200' 
-                              : 'bg-slate-50 text-slate-700 border-slate-200'
-                          }`}
-                        >
-                          {isUISuite ? '🖱️ UI Tests' : '🌐 API Tests'}
-                        </Badge>
-                      </div>
-                      
-                      {/* Details Row */}
-                      <div className="flex items-center gap-3">
-                        <div className={`flex items-center justify-center w-12 h-12 rounded-xl shadow-lg group-hover:shadow-xl transition-shadow duration-300 ${
-                          isUISuite 
-                            ? 'bg-gradient-to-br from-violet-600 to-purple-600' 
-                            : 'bg-gradient-to-br from-slate-600 to-slate-700'
-                        }`}>
-                          {isUISuite ? (
-                            <MousePointer className="h-6 w-6 text-white" />
-                          ) : (
-                            <Globe className="h-6 w-6 text-white" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <CardDescription className="text-sm text-slate-600">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-4">
-                                <span>{suite.testCases.length} test case{suite.testCases.length !== 1 ? "s" : ""}</span>
-                                <span className="text-gray-400">•</span>
-                                <span>{totalSteps} {isUISuite ? 'step' : 'data item'}{totalSteps !== 1 ? 's' : ''}</span>
-                              </div>
-                              {suite.fileName && (
-                                  <span className="block text-xs text-slate-500">
-                                    📄 <span className="truncate inline-block max-w-[200px] align-bottom">{suite.fileName}</span>
-                                  </span>
+                  {filteredSuites.map((suite) => {
+                    const isUISuite = suite.type === "UI"
+                    const totalSteps = isUISuite
+                      ? suite.testCases.reduce((acc, tc) => acc + (tc.testSteps?.length || 0), 0)
+                      : suite.testCases.reduce((acc, tc) => acc + (tc.testData?.length || 0), 0)
+
+                    return (
+                      <Card
+                        key={suite.id}
+                        className={`group hover:shadow-2xl transition-all duration-300 border-0 shadow-xl bg-white/80 backdrop-blur-xl hover:bg-white/90 rounded-xl overflow-hidden ${
+                          isUISuite ? 'border-l-4 border-l-violet-500' : 'border-l-4 border-l-slate-500'
+                        } ${viewMode === 'list' ? 'flex flex-row' : ''}`}
+                      >
+                        <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-blue-50/50">
+                          {/* Title Row - Full Width */}
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <CardTitle className="text-sm font-semibold text-slate-900 group-hover:text-slate-700 transition-colors duration-200 flex-1">
+                                {suite.suiteName}
+                              </CardTitle>
+                              <Badge className={`${getStatusBadge(suite.status || "Not Started")} font-medium px-3 py-1 flex-shrink-0`}>
+                                {suite.status}
+                              </Badge>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className={`text-xs font-medium ${
+                                isUISuite 
+                                  ? 'bg-violet-50 text-violet-700 border-violet-200' 
+                                  : 'bg-slate-50 text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              {isUISuite ? '🖱️ UI Tests' : '🌐 API Tests'}
+                            </Badge>
+                          </div>
+
+                          {/* Details Row */}
+                          <div className="flex items-center gap-3">
+                            <div className={`flex items-center justify-center w-12 h-12 rounded-xl shadow-lg group-hover:shadow-xl transition-shadow duration-300 ${
+                              isUISuite 
+                                ? 'bg-gradient-to-br from-violet-600 to-purple-600' 
+                                : 'bg-gradient-to-br from-slate-600 to-slate-700'
+                            }`}>
+                              {isUISuite ? (
+                                <MousePointer className="h-6 w-6 text-white" />
+                              ) : (
+                                <Globe className="h-6 w-6 text-white" />
                               )}
-                              {suite.baseUrl && (
-                                  <span className="flex items-center text-xs text-slate-600">
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <CardDescription className="text-sm text-slate-600">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-4">
+                                    <span>{suite.testCases.length} test case{suite.testCases.length !== 1 ? "s" : ""}</span>
+                                    <span className="text-gray-400">•</span>
+                                    <span>{totalSteps} {isUISuite ? 'step' : 'data item'}{totalSteps !== 1 ? 's' : ''}</span>
+                                  </div>
+                                  {suite.fileName && (
+                                      <span className="block text-xs text-slate-500">
+                                        📄 <span className="truncate inline-block max-w-[200px] align-bottom">{suite.fileName}</span>
+                                      </span>
+                                  )}
+                                  {suite.baseUrl && (
+                                      <span className="flex items-center text-xs text-slate-600">
                                 <Globe className="h-3 w-3 mr-1 flex-shrink-0" />
                                 <span className="truncate inline-block max-w-[200px]">{suite.baseUrl}</span>
                               </span>
-                              )}
+                                  )}
+                                </div>
+                              </CardDescription>
                             </div>
-                          </CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
+                          </div>
+                        </CardHeader>
 
-                    <CardContent className={`pt-0 ${viewMode === 'list' ? 'flex-1 flex flex-col' : ''}`}>
-                      <div className={`space-y-4 ${viewMode === 'list' ? 'flex-1' : ''}`}>
-                        {/* Test Cases Section */}
-                        <div className="bg-gray-50 rounded-lg">
-                          <button
-                            onClick={() => toggleSuiteExpansion(suite.id)}
-                            className="w-full p-3 flex items-center justify-between hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                          >
-                            <h4 className="text-xs font-medium text-gray-700 flex items-center gap-1">
-                              {isUISuite ? (
-                                <><MousePointer className="h-3 w-3" /> UI Test Cases ({suite.testCases.length})</>
-                              ) : (
-                                <><FileText className="h-3 w-3" /> API Test Cases ({suite.testCases.length})</>
-                              )}
-                            </h4>
-                            {expandedSuites.has(suite.id) ? (
-                              <ChevronDown className="h-4 w-4 text-gray-500" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 text-gray-500" />
-                            )}
-                          </button>
-                          
-                          {expandedSuites.has(suite.id) && (
-                            <div className="px-3 pb-3 space-y-2 max-h-48 overflow-y-auto">
-                              {suite.testCases.map((testCase, idx) => {
-                                const caseSteps = isUISuite ? testCase.testSteps?.length || 0 : testCase.testData?.length || 0
-                                return (
-                                  <div key={idx} className="bg-white p-2 rounded border border-gray-200">
-                                    <div className="flex items-center justify-between mb-1">
-                                      <span className="text-xs font-medium text-gray-800 truncate flex-1 mr-2">
-                                        {testCase.name}
-                                      </span>
-                                      <div className="flex items-center gap-1 flex-shrink-0">
-                                        {testCase.type && (
-                                          <Badge variant="outline" className="text-xs px-1 py-0">
-                                            {testCase.type}
-                                          </Badge>
-                                        )}
-                                        <span className="text-xs text-gray-500">
-                                          {caseSteps} {isUISuite ? 'steps' : 'items'}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Test Case Details */}
-                                    {isUISuite && testCase.testSteps && testCase.testSteps.length > 0 && (
-                                      <div className="space-y-1">
-                                        {testCase.testSteps.slice(0, 3).map((step, stepIdx) => (
-                                          <div key={stepIdx} className="text-xs text-gray-600 flex items-center gap-2">
-                                            <Badge variant="secondary" className="text-xs px-1 py-0">
-                                              {step.keyword}
-                                            </Badge>
-                                            <span className="truncate">
-                                              {step.value || step.locator?.value || step.target || 'No target'}
+                        <CardContent className={`pt-0 ${viewMode === 'list' ? 'flex-1 flex flex-col' : ''}`}>
+                          <div className={`space-y-4 ${viewMode === 'list' ? 'flex-1' : ''}`}>
+                            {/* Test Cases Section */}
+                            <div className="bg-gray-50 rounded-lg">
+                              <button
+                                onClick={() => toggleSuiteExpansion(suite.id)}
+                                className="w-full p-3 flex items-center justify-between hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                              >
+                                <h4 className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                                  {isUISuite ? (
+                                    <><MousePointer className="h-3 w-3" /> UI Test Cases ({suite.testCases.length})</>
+                                  ) : (
+                                    <><FileText className="h-3 w-3" /> API Test Cases ({suite.testCases.length})</>
+                                  )}
+                                </h4>
+                                {expandedSuites.has(suite.id) ? (
+                                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-gray-500" />
+                                )}
+                              </button>
+
+                              {expandedSuites.has(suite.id) && (
+                                <div className="px-3 pb-3 space-y-2 max-h-48 overflow-y-auto">
+                                  {suite.testCases.map((testCase, idx) => {
+                                    const caseSteps = isUISuite ? testCase.testSteps?.length || 0 : testCase.testData?.length || 0
+                                    return (
+                                      <div key={idx} className="bg-white p-2 rounded border border-gray-200">
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="text-xs font-medium text-gray-800 truncate flex-1 mr-2">
+                                            {testCase.name}
+                                          </span>
+                                          <div className="flex items-center gap-1 flex-shrink-0">
+                                            {testCase.type && (
+                                              <Badge variant="outline" className="text-xs px-1 py-0">
+                                                {testCase.type}
+                                              </Badge>
+                                            )}
+                                            <span className="text-xs text-gray-500">
+                                              {caseSteps} {isUISuite ? 'steps' : 'items'}
                                             </span>
                                           </div>
-                                        ))}
-                                        {testCase.testSteps.length > 3 && (
-                                          <div className="text-xs text-gray-500 italic">+{testCase.testSteps.length - 3} more steps...</div>
-                                        )}
-                                      </div>
-                                    )}
-                                    
-                                    {!isUISuite && testCase.testData && testCase.testData.length > 0 && (
-                                      <div className="space-y-1">
-                                        {testCase.testData.slice(0, 2).map((data, dataIdx) => (
-                                          <div key={dataIdx} className="text-xs text-gray-600 flex items-center gap-2">
-                                            <Badge variant="secondary" className="text-xs px-1 py-0">
-                                              {data.method}
-                                            </Badge>
-                                            <span className="truncate font-mono">{data.endpoint}</span>
+                                        </div>
+
+                                        {/* Test Case Details */}
+                                        {isUISuite && testCase.testSteps && testCase.testSteps.length > 0 && (
+                                          <div className="space-y-1">
+                                            {testCase.testSteps.slice(0, 3).map((step, stepIdx) => (
+                                              <div key={stepIdx} className="text-xs text-gray-600 flex items-center gap-2">
+                                                <Badge variant="secondary" className="text-xs px-1 py-0">
+                                                  {step.keyword}
+                                                </Badge>
+                                                <span className="truncate">
+                                                  {step.value || step.locator?.value || step.target || 'No target'}
+                                                </span>
+                                              </div>
+                                            ))}
+                                            {testCase.testSteps.length > 3 && (
+                                              <div className="text-xs text-gray-500 italic">+{testCase.testSteps.length - 3} more steps...</div>
+                                            )}
                                           </div>
-                                        ))}
-                                        {testCase.testData.length > 2 && (
-                                          <div className="text-xs text-gray-500 italic">+{testCase.testData.length - 2} more data items...</div>
+                                        )}
+
+                                        {!isUISuite && testCase.testData && testCase.testData.length > 0 && (
+                                          <div className="space-y-1">
+                                            {testCase.testData.slice(0, 2).map((data, dataIdx) => (
+                                              <div key={dataIdx} className="text-xs text-gray-600 flex items-center gap-2">
+                                                <Badge variant="secondary" className="text-xs px-1 py-0">
+                                                  {data.method}
+                                                </Badge>
+                                                <span className="truncate font-mono">{data.endpoint}</span>
+                                              </div>
+                                            ))}
+                                            {testCase.testData.length > 2 && (
+                                              <div className="text-xs text-gray-500 italic">+{testCase.testData.length - 2} more data items...</div>
+                                            )}
+                                          </div>
                                         )}
                                       </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Tags */}
-                        {suite.tags && suite.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {suite.tags.map((tag, index) => (
-                                <div key={index} className="flex gap-1">
-                                  {Object.entries(tag).map(([key, value]) => (
-                                      <Badge
-                                          key={key}
-                                          variant="secondary"
-                                          className="text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors duration-200"
-                                      >
-                                        {key}: {value}
-                                      </Badge>
-                                  ))}
+                                    )
+                                  })}
                                 </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className={`flex items-center ${viewMode === 'list' ? 'justify-end gap-2 pt-4 border-t border-gray-100' : 'justify-between pt-4 border-t border-gray-100'} min-w-0`}>
-                          {viewMode === 'grid' && (
-                            <div className="flex items-center space-x-2 flex-shrink-0">
-                              <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setSelectedSuite(suite)
-                                    setIsEditing(true)
-                                  }}
-                                  className="h-8 px-3 bg-white/60 hover:bg-white/80 border-slate-200 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md flex-shrink-0"
-                              >
-                                <Edit className="h-3 w-3 mr-1" />
-                                Edit
-                              </Button>
-                              <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setSelectedSuite(suite)
-                                    setShowTestCasesModal(true)
-                                  }}
-                                  className={`h-8 px-3 bg-white/60 hover:bg-white/80 border-slate-200 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md flex-shrink-0 ${
-                                    isUISuite 
-                                      ? 'hover:border-purple-400 hover:bg-purple-50 hover:text-purple-700'
-                                      : 'hover:border-green-400 hover:bg-green-50 hover:text-green-700'
-                                  }`}
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                Details
-                              </Button>
+                              )}
                             </div>
-                          )}
 
-                          <div className="flex items-center space-x-2 flex-shrink-0">
-                            {viewMode === 'list' && (
-                              <>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setSelectedSuite(suite)
-                                      setIsEditing(true)
-                                    }}
-                                    className="h-8 px-3 border-gray-300 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 flex-shrink-0"
-                                >
-                                  <Edit className="h-3 w-3 mr-1" />
-                                  Edit
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setSelectedSuite(suite)
-                                      setShowTestCasesModal(true)
-                                    }}
-                                    className={`h-8 px-3 border-gray-300 transition-all duration-200 flex-shrink-0 ${
-                                      isUISuite 
-                                        ? 'hover:border-purple-400 hover:bg-purple-50 hover:text-purple-700'
-                                        : 'hover:border-green-400 hover:bg-green-50 hover:text-green-700'
-                                    }`}
-                                >
-                                  <Eye className="h-3 w-3 mr-1" />
-                                  Details
-                                </Button>
-                              </>
+                            {/* Tags */}
+                            {suite.tags && suite.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {suite.tags.map((tag, index) => (
+                                    <div key={index} className="flex gap-1">
+                                      {Object.entries(tag).map(([key, value]) => (
+                                          <Badge
+                                              key={key}
+                                              variant="secondary"
+                                              className="text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors duration-200"
+                                          >
+                                            {key}: {value}
+                                          </Badge>
+                                      ))}
+                                    </div>
+                                ))}
+                              </div>
                             )}
-                            <Button
-                                size="sm"
-                                onClick={() => handleRunSuite(suite)}
-                                disabled={!frameworkPath || !suite.filePath}
-                                className={`h-8 px-3 text-white transition-all duration-200 rounded-lg shadow-lg hover:shadow-xl flex-shrink-0 ${
-                                  isUISuite
-                                    ? 'bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700'
-                                    : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
-                                }`}
-                                title={
-                                  !frameworkPath
-                                      ? "Configure framework path first"
-                                      : !suite.filePath
-                                          ? "Save the suite first"
-                                          : "Run test suite"
-                                }
-                            >
-                              <Play className="h-3 w-3 mr-1" />
-                              Run
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDeleteSuite(suite)}
-                                className="h-8 px-2 bg-white/60 hover:bg-white/80 border-red-200 hover:border-red-400 hover:bg-red-50 hover:text-red-700 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md flex-shrink-0"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+
+                            {/* Action Buttons */}
+                            <div className={`flex items-center ${viewMode === 'list' ? 'justify-end gap-2 pt-4 border-t border-gray-100' : 'justify-between pt-4 border-t border-gray-100'} min-w-0`}>
+                              {viewMode === 'grid' && (
+                                <div className="flex items-center space-x-2 flex-shrink-0">
+                                  <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedSuite(suite)
+                                        setIsEditing(true)
+                                      }}
+                                      className="h-8 px-3 bg-white/60 hover:bg-white/80 border-slate-200 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md flex-shrink-0"
+                                  >
+                                    <Edit className="h-3 w-3 mr-1" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedSuite(suite)
+                                        setShowTestCasesModal(true)
+                                      }}
+                                      className={`h-8 px-3 bg-white/60 hover:bg-white/80 border-slate-200 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md flex-shrink-0 ${
+                                        isUISuite 
+                                          ? 'hover:border-purple-400 hover:bg-purple-50 hover:text-purple-700'
+                                          : 'hover:border-green-400 hover:bg-green-50 hover:text-green-700'
+                                      }`}
+                                  >
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    Details
+                                  </Button>
+                                </div>
+                              )}
+
+                              <div className="flex items-center space-x-2 flex-shrink-0">
+                                {viewMode === 'list' && (
+                                  <>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setSelectedSuite(suite)
+                                          setIsEditing(true)
+                                        }}
+                                        className="h-8 px-3 border-gray-300 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 flex-shrink-0"
+                                    >
+                                      <Edit className="h-3 w-3 mr-1" />
+                                      Edit
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setSelectedSuite(suite)
+                                          setShowTestCasesModal(true)
+                                        }}
+                                        className={`h-8 px-3 border-gray-300 transition-all duration-200 flex-shrink-0 ${
+                                          isUISuite 
+                                            ? 'hover:border-purple-400 hover:bg-purple-50 hover:text-purple-700'
+                                            : 'hover:border-green-400 hover:bg-green-50 hover:text-green-700'
+                                        }`}
+                                    >
+                                      <Eye className="h-3 w-3 mr-1" />
+                                      Details
+                                    </Button>
+                                  </>
+                                )}
+                                <Button
+                                    size="sm"
+                                    onClick={() => handleRunSuite(suite)}
+                                    disabled={!frameworkPath || !suite.filePath}
+                                    className={`h-8 px-3 text-white transition-all duration-200 rounded-lg shadow-lg hover:shadow-xl flex-shrink-0 ${
+                                      isUISuite
+                                        ? 'bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700'
+                                        : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
+                                    }`}
+                                    title={
+                                      !frameworkPath
+                                          ? "Configure framework path first"
+                                          : !suite.filePath
+                                              ? "Save the suite first"
+                                              : "Run test suite"
+                                    }
+                                >
+                                  <Play className="h-3 w-3 mr-1" />
+                                  Run
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDeleteSuite(suite)}
+                                    className="h-8 px-2 bg-white/60 hover:bg-white/80 border-red-200 hover:border-red-400 hover:bg-red-50 hover:text-red-700 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md flex-shrink-0"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-                })}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
                 </div>
               </div>
 
