@@ -12,17 +12,22 @@ import {
   ServersTab
 } from './components'
 import { useRalphLoop } from './hooks/useRalphLoop'
-import { Plan, LearningEntry } from './types'
+import { useMCPServers } from './hooks/useMCPServers'
+import { usePlanOperations } from './hooks/usePlanOperations'
+import { generatePlanWithAI, exploreAndGenerateScenarios } from './services'
 import { AI_CONFIG } from '@/ai-config'
+import type { Plan, LearningEntry } from '@/types/ralph-loop'
 
 export default function RalphLoopPage() {
   const state = useRalphLoop()
+  const mcp = useMCPServers()
+  const planOps = usePlanOperations(state.currentPlan, state.setCurrentPlan, state.setAllPlans)
 
   // Load MCP servers on mount
   useEffect(() => {
     (async () => {
-      await loadMCPServers()
-      await autoConnectServers()
+      await mcp.loadMCPServers()
+      await mcp.autoConnectServers()
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -32,221 +37,71 @@ export default function RalphLoopPage() {
     state.logRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [state.executionLog, state.logRef])
 
-  // ============ MCP Server Functions ============
-  const loadMCPServers = async () => {
-    try {
-      const response = await fetch('/api/mcp-servers?action=list-servers')
-      const data = await response.json()
+  // Sync MCP state with main state
+  useEffect(() => {
+    state.setMcpServers(mcp.mcpServers)
+    state.setMcpStatuses(mcp.mcpStatuses)
+    state.setMcpTools(mcp.mcpTools)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mcp.mcpServers, mcp.mcpStatuses, mcp.mcpTools])
 
-      const servers = [
-        { id: 'testflowpro', name: 'TestFlowPro Operations' },
-        { id: 'playwright', name: 'Playwright' },
-        { id: 'memory', name: 'Memory' },
-        { id: 'fetch', name: 'Fetch' }
-      ]
-
-      state.setMcpServers(servers)
-
-      // Load statuses
-      await refreshMCPStatuses()
-      await refreshMCPTools()
-    } catch (error) {
-      console.error('Failed to load MCP servers:', error)
-    }
-  }
-
-  const refreshMCPStatuses = async () => {
-    try {
-      const response = await fetch('/api/mcp-servers?action=all-statuses')
-      const data = await response.json()
-      state.setMcpStatuses(data.statuses || {})
-    } catch (error) {
-      console.error('Failed to refresh MCP statuses:', error)
-    }
-  }
-
-  const refreshMCPTools = async () => {
-    try {
-      const response = await fetch('/api/mcp-servers?action=list-tools')
-      const data = await response.json()
-      state.setMcpTools(data.tools || [])
-    } catch (error) {
-      console.error('Failed to refresh MCP tools:', error)
-    }
-  }
-
-  const connectToServer = async (serverId: string) => {
-    state.setConnectingServers(prev => new Set(prev).add(serverId))
-
-    try {
-      const response = await fetch('/api/mcp-servers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'connect', serverId })
-      })
-
-      if (!response.ok) throw new Error('Failed to connect')
-
-      await refreshMCPStatuses()
-      await refreshMCPTools()
-
-      state.toast({
-        title: '✅ Connected',
-        description: `Connected to ${serverId}`
-      })
-    } catch (error: any) {
-      state.toast({
-        title: '❌ Connection Failed',
-        description: error.message,
-        variant: 'destructive'
-      })
-    } finally {
-      state.setConnectingServers(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(serverId)
-        return newSet
-      })
-    }
-  }
-
-  const autoConnectServers = async () => {
-    try {
-      // Fetch current statuses
-      await refreshMCPStatuses()
-      const statuses = state.mcpStatuses || {}
-
-      // Servers we want online by default
-      const serversToConnect = ['testflowpro', 'playwright']
-
-      for (const serverId of serversToConnect) {
-        if (!statuses[serverId]?.connected) {
-          // Fire-and-forget connect, then refresh tools
-          await connectToServer(serverId)
-        }
-      }
-
-      // Retry tools discovery a few times so list-tools is populated early
-      let retries = 0
-      while (retries < 5) {
-        await refreshMCPTools()
-        if ((state.mcpTools?.length || 0) > 0) break
-        await new Promise(r => setTimeout(r, 1000))
-        retries++
-      }
-    } catch (err) {
-      console.error('Failed to auto-connect MCP servers:', err)
-    }
-  }
-
-  // ============ Plan Functions ============
-  const generatePlanWithAI = async () => {
-    if (!state.requirementsInput.trim()) return
-
+  // ============ Plan Generation ============
+  const handleGeneratePlan = async () => {
     state.setIsGeneratingPlan(true)
+    const result = await generatePlanWithAI(
+      state.requirementsInput,
+      state.setCurrentPlan,
+      state.setAllPlans
+    )
+    state.setIsGeneratingPlan(false)
 
-    try {
-      const response = await fetch('/api/copilot-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `You are a project planning AI. Break down these requirements into specific, actionable tasks that can be executed sequentially.\n\nRequirements:\n${state.requirementsInput}\n\nRespond with a JSON array of tasks with this structure:\n[\n  { "title": "Task title", "description": "What to do", "order": 1 },\n  ...\n]\n\nRespond ONLY with the JSON array, no other text.`,
-          type: 'general',
-          provider: 'github-copilot',
-          agentMode: false
-        })
-      })
-
-      const data = await response.json()
-      const planText = data.response
-
-      // Parse plan (simple implementation - enhance as needed)
-      const tasks = parsePlanToTasks(planText)
-
-      const plan: Plan = {
-        id: `plan-${Date.now()}`,
-        title: `Test Plan - ${new Date().toLocaleString()}`,
-        requirements: state.requirementsInput,
-        generatedTasks: tasks,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-
-      state.setCurrentPlan(plan)
-      state.setAllPlans(prev => [...prev, plan])
-
+    if (result.success) {
       state.toast({
         title: '✅ Plan Generated',
-        description: `Created plan with ${tasks.length} tasks`
+        description: `Created plan with ${state.currentPlan?.generatedTasks.length} tasks`
       })
-    } catch (error: any) {
+    } else {
       state.toast({
         title: '❌ Plan Generation Failed',
-        description: error.message,
+        description: result.error,
         variant: 'destructive'
       })
-    } finally {
-      state.setIsGeneratingPlan(false)
     }
   }
 
-  const parsePlanToTasks = (planText: string) => {
-    try {
-      // Try to extract JSON array from response
-      const jsonMatch = planText.match(/\[[\s\S]*\]/)
-      if (jsonMatch) {
-        const parsedTasks = JSON.parse(jsonMatch[0])
+  const handleExploreAndGenerate = async (url: string, context?: string) => {
+    state.setIsGeneratingPlan(true)
+    
+    const result = await exploreAndGenerateScenarios(
+      url,
+      context,
+      state.mcpTools,
+      state.setCurrentPlan,
+      state.setAllPlans,
+      mcp.ensureMCPReady
+    )
+    
+    state.setIsGeneratingPlan(false)
 
-        return parsedTasks.map((task: any, idx: number) => ({
-          id: `task-${Date.now()}-${idx}`,
-          title: task.title || `Task ${idx + 1}`,
-          description: task.description || task.title || '',
-          status: 'pending' as const,
-          progress: 0
-        }))
-      }
-    } catch (error) {
-      console.error('Failed to parse JSON plan, falling back to text parsing:', error)
+    if (result.success) {
+      state.toast({
+        title: '✅ Exploration Complete',
+        description: `Discovered ${state.currentPlan?.discoveredScenarios?.length || 0} test scenarios`
+      })
+    } else {
+      state.toast({
+        title: '❌ Exploration Failed',
+        description: result.error,
+        variant: 'destructive'
+      })
     }
-
-    // Fallback: Parse as numbered list (old format)
-    const lines = planText.split('\n')
-    const tasks = []
-    let currentTask: any = null
-
-    for (const line of lines) {
-      const match = line.match(/^(\d+)\.\s*\*?\*?(.+?)\*?\*?:?\s*(.*)/)
-      if (match) {
-        if (currentTask) tasks.push(currentTask)
-        currentTask = {
-          id: `task-${Date.now()}-${tasks.length}`,
-          title: match[2].trim(),
-          description: match[3].trim() || match[2].trim(),
-          status: 'pending' as const,
-          progress: 0
-        }
-      } else if (currentTask && line.trim()) {
-        currentTask.description += ' ' + line.trim()
-      }
-    }
-
-    if (currentTask) tasks.push(currentTask)
-
-    return tasks.length > 0 ? tasks : [
-      {
-        id: `task-${Date.now()}`,
-        title: 'Execute test plan',
-        description: planText,
-        status: 'pending' as const,
-        progress: 0
-      }
-    ]
   }
 
-  // ============ Execute Functions ============
+  // ============ Execution Functions ============
   const generateExecutionSummary = async (plan: Plan) => {
-    const completedTasks = plan.generatedTasks.filter(t => t.status === 'completed')
-    const failedTasks = plan.generatedTasks.filter(t => t.status === 'failed')
-    const totalDuration = plan.generatedTasks.reduce((sum, t) => sum + (t.duration || 0), 0)
+    const completedTasks = plan.generatedTasks.filter((t: any) => t.status === 'completed')
+    const failedTasks = plan.generatedTasks.filter((t: any) => t.status === 'failed')
+    const totalDuration = plan.generatedTasks.reduce((sum: number, t: any) => sum + (t.duration || 0), 0)
 
     const summaryPrompt = `Generate a detailed execution summary in markdown format for this automation test execution:
 
@@ -257,7 +112,7 @@ export default function RalphLoopPage() {
 **Total Duration**: ${totalDuration}s
 
 **Tasks Executed**:
-${plan.generatedTasks.map((t, i) => `
+${plan.generatedTasks.map((t: any, i: number) => `
 ${i + 1}. **${t.title}** (${t.status})
    - Description: ${t.description}
    - Duration: ${t.duration || 'N/A'}s
@@ -408,7 +263,7 @@ Use tables, emojis, code blocks, and visual formatting. Be detailed and professi
       state.setLearningEntries(prev => [...prev, learningEntry])
       state.setTotalTokensUsed(prev => prev + 1500)
 
-      const completedCount = updatedPlan.generatedTasks.filter(t => t.status === 'completed').length
+      const completedCount = updatedPlan.generatedTasks.filter((t: any) => t.status === 'completed').length
       state.setSuccessRate(Math.round((completedCount / updatedPlan.generatedTasks.length) * 100))
 
       setTimeout(() => {
@@ -431,23 +286,22 @@ Use tables, emojis, code blocks, and visual formatting. Be detailed and professi
   const ensureMCPReady = async (): Promise<boolean> => {
     try {
       // Refresh statuses and tools
-      await refreshMCPStatuses()
-      await refreshMCPTools()
+      await mcp.refreshMCPStatuses()
+      await mcp.refreshMCPTools()
 
       const statuses = state.mcpStatuses
-      const tools = state.mcpTools
 
       const isPlaywrightConnected = statuses.playwright?.connected
       const isTestflowConnected = statuses.testflowpro?.connected
 
       // Connect if not connected
-      if (!isTestflowConnected) await connectToServer('testflowpro')
-      if (!isPlaywrightConnected) await connectToServer('playwright')
+      if (!isTestflowConnected) await mcp.connectToServer('testflowpro')
+      if (!isPlaywrightConnected) await mcp.connectToServer('playwright')
 
       // Wait briefly for tools to populate
       let retries = 0
       while (retries < 5) {
-        await refreshMCPTools()
+        await mcp.refreshMCPTools()
         if ((state.mcpTools?.length || 0) > 0) break
         await new Promise(r => setTimeout(r, 1500))
         retries++
@@ -506,10 +360,10 @@ Use tables, emojis, code blocks, and visual formatting. Be detailed and professi
     // Auto-populate baseUrl from plan if not already set
     if (!state.codeGenBaseUrl || state.codeGenBaseUrl === 'https://example.com') {
       const planText = `${plan.requirements} ${plan.generatedTasks.map(t => `${t.title} ${t.description}`).join(' ')}`
-      const urlMatch = planText.match(/https?:\/\/[^\s\)"']+/)
+      const urlMatch = planText.match(/https?:\/\/[^\s)"']+/)
       if (urlMatch) {
         const fullUrl = urlMatch[0]
-        const urlParts = fullUrl.match(/(https?:\/\/[^\/\s\)"']+)/)
+        const urlParts = fullUrl.match(/(https?:\/\/[^\/\s)"']+)/)
         if (urlParts) {
           state.setCodeGenBaseUrl(urlParts[1])
         }
@@ -605,11 +459,11 @@ Use tables, emojis, code blocks, and visual formatting. Be detailed and professi
     let baseUrl = state.codeGenBaseUrl
     if (!baseUrl || baseUrl === 'https://example.com') {
       // Try to extract URL from context
-      const urlMatch = context.match(/https?:\/\/[^\s\)"']+/)
+      const urlMatch = context.match(/https?:\/\/[^\s)"']+/)
       if (urlMatch) {
         const fullUrl = urlMatch[0]
         // Extract protocol + domain
-        const urlParts = fullUrl.match(/(https?:\/\/[^\/\s\)"']+)/)
+        const urlParts = fullUrl.match(/(https?:\/\/[^\/\s)"']+)/)
         if (urlParts) {
           baseUrl = urlParts[1]
         }
@@ -1034,8 +888,14 @@ CRITICAL REQUIREMENTS:
                 setRequirementsInput={state.setRequirementsInput}
                 currentPlan={state.currentPlan}
                 isGeneratingPlan={state.isGeneratingPlan}
-                onGeneratePlan={generatePlanWithAI}
+                onGeneratePlan={handleGeneratePlan}
                 onStartExecution={startExecution}
+                onAddTask={planOps.addPlanTask}
+                onUpdateTask={planOps.updatePlanTask}
+                onDeleteTask={planOps.deletePlanTask}
+                onReorderTasks={planOps.reorderPlanTasks}
+                onExploreAndGenerate={handleExploreAndGenerate}
+                isExploring={state.isGeneratingPlan}
               />
             </TabsContent>
 
@@ -1102,9 +962,9 @@ CRITICAL REQUIREMENTS:
                 mcpServers={state.mcpServers}
                 mcpStatuses={state.mcpStatuses}
                 mcpTools={state.mcpTools}
-                connectingServers={state.connectingServers}
-                onConnectServer={connectToServer}
-                onRefreshStatuses={refreshMCPStatuses}
+                connectingServers={mcp.connectingServers}
+                onConnectServer={mcp.connectToServer}
+                onRefreshStatuses={mcp.refreshMCPStatuses}
               />
             </TabsContent>
           </Tabs>
@@ -1113,4 +973,3 @@ CRITICAL REQUIREMENTS:
     </div>
   )
 }
-

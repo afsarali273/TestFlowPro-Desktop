@@ -18,6 +18,21 @@ export interface Plan {
   generatedTasks: Task[]
   createdAt: Date
   updatedAt: Date
+  mode?: 'manual' | 'exploratory'
+  explorationUrl?: string
+  explorationSummary?: string
+  discoveredScenarios?: DiscoveredScenario[]
+}
+
+export interface DiscoveredScenario {
+  id: string
+  title: string
+  description: string
+  page: string
+  elements: any[]
+  steps: string[]
+  priority: 'high' | 'medium' | 'low'
+  category: string
 }
 
 export interface LearningEntry {
