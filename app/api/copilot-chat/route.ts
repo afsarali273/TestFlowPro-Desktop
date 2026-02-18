@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       messageLength: message?.length || 0,
       messagePreview: message?.substring(0, 100),
       useSDK: useSDK ? 'yes (OAuth auto-auth)' : 'no (legacy)',
-      agentMode: agentMode || false,
+      agentMode: Boolean(agentMode),
       mcpToolsCount: mcpTools?.length || 0
     });
     
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
           message,
           type,
           model: model || 'gpt-4o',
-          agentMode: agentMode || false,
+          agentMode: Boolean(agentMode),  // Explicitly convert to boolean
           mcpTools: mcpTools || []
         });
 

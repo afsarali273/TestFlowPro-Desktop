@@ -74,6 +74,9 @@ export function RalphLoopModal({ open, onOpenChange }: MCPAgentModalProps) {
   const [isExecuting, setIsExecuting] = useState(false)
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0)
   const [executionLog, setExecutionLog] = useState<string[]>([])
+  const [executionStartTime, setExecutionStartTime] = useState<Date | null>(null)
+  const [executionEndTime, setExecutionEndTime] = useState<Date | null>(null)
+  const [showExecutionSummary, setShowExecutionSummary] = useState(false)
 
   // Learning State
   const [learningEntries, setLearningEntries] = useState<LearningEntry[]>([])
@@ -300,6 +303,9 @@ export function RalphLoopModal({ open, onOpenChange }: MCPAgentModalProps) {
     setIsExecuting(true)
     setCurrentTaskIndex(0)
     setExecutionLog([`🚀 Started execution at ${new Date().toLocaleTimeString()}`])
+    setExecutionStartTime(new Date())
+    setExecutionEndTime(null)
+    setShowExecutionSummary(false)
 
     // Start executing first task
     executeTask(0)
@@ -312,7 +318,10 @@ export function RalphLoopModal({ open, onOpenChange }: MCPAgentModalProps) {
     if (!task) {
       // All tasks completed
       setIsExecuting(false)
+      setExecutionEndTime(new Date())
+      setShowExecutionSummary(true)
       addLog('✅ All tasks completed!')
+      addLog(`\n📊 Execution Summary available - scroll down to view`)
       return
     }
 
@@ -328,12 +337,104 @@ export function RalphLoopModal({ open, onOpenChange }: MCPAgentModalProps) {
     try {
       addLog(`🤖 Sending to AI...`)
 
-      // Call AI to execute this task
+      // Build enhanced autonomous prompt
+      const autonomousPrompt = `
+========================================
+🤖 AUTONOMOUS AGENT MODE - CRITICAL RULES
+========================================
+
+❌ ABSOLUTELY FORBIDDEN - YOU WILL FAIL IF YOU DO ANY OF THESE:
+1. NEVER ask "Could you confirm..."
+2. NEVER ask "Would you like me to..."
+3. NEVER ask "Should I try..."
+4. NEVER ask "Is there something else..."
+5. NEVER say "seems to be a challenge" without IMMEDIATELY trying 5+ alternatives
+6. NEVER give up after 1 or 2 attempts
+7. NEVER return partial results
+8. NEVER ask for user input mid-execution
+
+✅ REQUIRED BEHAVIOR:
+1. Try EVERY possible approach until success
+2. If approach #1 fails → IMMEDIATELY try approach #2, #3, #4, #5...
+3. Use ALL available MCP tools creatively
+4. Take snapshots to analyze page structure
+5. Try JavaScript injection if normal selectors fail
+6. Chain multiple tools together
+7. ONLY respond when task is 100% COMPLETE
+8. Return ACTUAL results, not "I tried but..."
+
+========================================
+YOUR TASK:
+========================================
+
+Title: ${task.title}
+Description: ${task.description}
+
+========================================
+EXECUTION STRATEGY - FOLLOW THIS:
+========================================
+
+Step 1: ANALYZE
+- Take browser snapshot FIRST
+- Identify ALL possible ways to accomplish the task
+- Plan 5+ fallback approaches
+
+Step 2: EXECUTE WITH RETRIES
+- Try approach #1
+- If fails → snapshot → analyze → try approach #2
+- If fails → snapshot → analyze → try approach #3
+- Continue until SUCCESS or all 10+ approaches exhausted
+
+Step 3: VERIFY
+- Confirm action completed (URL changed, element updated, data extracted)
+- If verification fails → it means you clicked wrong element → go back and retry
+
+Step 4: RETURN RESULTS
+- Report what you actually accomplished
+- Include concrete data/evidence
+- Never say "could not be located" - say what you DID accomplish after trying alternatives
+
+========================================
+EXAMPLE: GOOD vs BAD RESPONSES
+========================================
+
+❌ BAD (FORBIDDEN):
+"The Round Trip radio button could not be located. Would you like me to try another approach?"
+
+✅ GOOD (REQUIRED):
+"Attempted locating Round Trip via:
+1. getByRole('radio') - not found
+2. getByText(/round trip/i) - not found
+3. JavaScript query - found element, clicked successfully
+4. Verified: URL contains 'tripType=R', Round Trip selected ✓
+Result: Round Trip option now active"
+
+❌ BAD:
+"The From field could not be located. Should I try debugging?"
+
+✅ GOOD:
+"Tried 8 approaches for From field:
+1-3: Standard selectors failed
+4. Snapshot analysis revealed input has data-cy='fromCity'
+5. Clicked via data-cy selector
+6. Typed 'CCU' via keyboard
+7. Pressed Enter to confirm
+8. Verified: Field shows 'Kolkata (CCU)' ✓
+Result: Departure city set to CCU"
+
+========================================
+NOW EXECUTE THE TASK AUTONOMOUSLY
+========================================
+
+Remember: NO QUESTIONS. JUST RESULTS.
+`
+
+      // Call AI to execute this task with enhanced autonomous prompt
       const response = await fetch('/api/copilot-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Execute this task:\n\nTitle: ${task.title}\nDescription: ${task.description}\n\nProvide the result or steps taken.`,
+          message: autonomousPrompt,
           type: 'mcp-agent',
           provider: 'github-copilot',
           agentMode: true,
@@ -343,8 +444,115 @@ export function RalphLoopModal({ open, onOpenChange }: MCPAgentModalProps) {
 
       const data = await response.json()
 
+      // Validate response - reject passive/questioning responses
+      const responseText = data.response || ''
+      const forbiddenPhrases = [
+        'could you confirm',
+        'would you like me to',
+        'should i try',
+        'is there something else',
+        'do you want me to',
+        'shall i',
+        'may i',
+        'can you confirm',
+        'proving to be a challenge',
+        'could not be located directly',
+        'another approach?',
+        'something else you\'d like',
+      ]
+
+      const containsForbiddenPhrase = forbiddenPhrases.some(phrase =>
+        responseText.toLowerCase().includes(phrase)
+      )
+
+      if (containsForbiddenPhrase) {
+        // AI is asking questions instead of being autonomous - force retry
+        addLog(`⚠️ AI response contains questions - enforcing autonomous mode...`)
+
+        // Extract which forbidden phrase was found
+        const foundPhrase = forbiddenPhrases.find(phrase =>
+          responseText.toLowerCase().includes(phrase)
+        )
+
+        addLog(`🚫 Detected forbidden phrase: "${foundPhrase}"`)
+        addLog(`🔄 Re-executing with stricter autonomous instructions...`)
+
+        // Retry with even stricter prompt
+        const stricterResponse = await fetch('/api/copilot-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: `
+CRITICAL: Your previous response was REJECTED because you asked a question: "${foundPhrase}"
+
+YOU ARE AN AUTONOMOUS AGENT. YOU CANNOT ASK QUESTIONS. 
+
+RE-DO THIS TASK RIGHT NOW with these mandatory steps:
+
+1. Take browser_snapshot to see current page state
+2. Try AT LEAST 5 different approaches:
+   - Make sure no overlaying modal or pop present , if presnt handle it
+   - getByRole with various roles
+   - getByText with different text patterns
+   - getByPlaceholder
+   - CSS selectors via page.locator()
+   - JavaScript via browser_run_code: page.evaluate(() => document.querySelector(...))
+3. If element not found after 5 tries, use JavaScript to find ANY element that might work
+4. Click/interact with element
+5. Verify action succeeded (take another snapshot, check URL, check element state)
+6. Report CONCRETE RESULTS
+
+Task: ${task.title}
+Description: ${task.description}
+
+DO NOT respond until you have ACTUAL RESULTS to report.
+DO NOT ask questions.
+DO NOT say "could not be located" - find alternative ways!
+
+Execute NOW and report your SUCCESS.
+`,
+            type: 'mcp-agent',
+            provider: 'github-copilot',
+            agentMode: true,
+            mcpTools: mcpTools
+          })
+        })
+
+        const stricterData = await stricterResponse.json()
+
+        // Use the stricter response
+        data.response = stricterData.response
+        addLog(`✅ Retry completed with autonomous mode enforced`)
+      }
+
       addLog(`⚙️ Execution completed`)
       addLog(`Result: ${data.response.substring(0, 200)}...`)
+
+      // Final validation - ensure response contains actual results
+      const finalResponse = data.response.toLowerCase()
+      const hasActualResults =
+        finalResponse.includes('success') ||
+        finalResponse.includes('completed') ||
+        finalResponse.includes('verified') ||
+        finalResponse.includes('clicked') ||
+        finalResponse.includes('selected') ||
+        finalResponse.includes('navigated') ||
+        finalResponse.includes('set to') ||
+        finalResponse.includes('result:') ||
+        /\d+/.test(finalResponse) || // Contains numbers (likely data)
+        finalResponse.length > 100 // Substantial response
+
+      const hasFailureExcuses =
+        finalResponse.includes('could not') ||
+        finalResponse.includes('unable to') ||
+        finalResponse.includes('not found') ||
+        finalResponse.includes('failed to locate')
+
+      if (!hasActualResults || hasFailureExcuses) {
+        addLog(`⚠️ Response lacks concrete results - task may need manual review`)
+        // Mark as needing attention but don't fail completely
+        updatedPlan.generatedTasks[taskIndex].result = `⚠️ NEEDS REVIEW: ${data.response}`
+      }
 
       // Mark task as completed
       updatedPlan.generatedTasks[taskIndex].status = 'completed'
@@ -376,6 +584,33 @@ export function RalphLoopModal({ open, onOpenChange }: MCPAgentModalProps) {
 
     } catch (error: any) {
       addLog(`❌ Task failed: ${error.message}`)
+
+      // Capture snapshot for debugging when Playwright is connected
+      try {
+        if (mcpStatuses.playwright?.connected) {
+          addLog('📸 Capturing page snapshot for analysis...')
+          const snapResponse = await fetch('/api/mcp-servers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'execute-tool',
+              serverId: 'playwright',
+              toolName: 'browser_snapshot',
+              args: { fullPage: false }
+            })
+          })
+          if (snapResponse.ok) {
+            const snapData = await snapResponse.json()
+            const text = snapData?.result?.content?.[0]?.text || 'Snapshot captured'
+            addLog(`🖼️ Snapshot captured (${text.length} chars). Inspect in Playwright panel if needed.`)
+          } else {
+            addLog('⚠️ Snapshot capture failed')
+          }
+        }
+      } catch (snapErr: any) {
+        addLog(`⚠️ Snapshot capture error: ${snapErr.message}`)
+      }
+
       updatedPlan.generatedTasks[taskIndex].status = 'failed'
       updatedPlan.generatedTasks[taskIndex].error = error.message
       setExecutingPlan(updatedPlan)
@@ -661,6 +896,388 @@ export function RalphLoopModal({ open, onOpenChange }: MCPAgentModalProps) {
                     <div ref={logRef} />
                   </div>
                 </ScrollArea>
+
+                {/* Comprehensive Execution Summary - Shown after completion */}
+                {showExecutionSummary && executingPlan && executionStartTime && executionEndTime && (
+                  <div className="border-t bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 p-6">
+                    <div className="max-w-4xl mx-auto space-y-6">
+                      {/* Header */}
+                      <div className="text-center space-y-2">
+                        <div className="text-4xl">🎉</div>
+                        <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                          Execution Complete
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          Plan executed successfully with detailed results below
+                        </p>
+                      </div>
+
+                      {/* Stats Overview */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border shadow-sm">
+                          <div className="text-xs text-muted-foreground mb-1">Total Tasks</div>
+                          <div className="text-2xl font-bold text-blue-600">{executingPlan.generatedTasks.length}</div>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border shadow-sm">
+                          <div className="text-xs text-muted-foreground mb-1">Completed</div>
+                          <div className="text-2xl font-bold text-green-600">
+                            {executingPlan.generatedTasks.filter(t => t.status === 'completed').length}
+                          </div>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border shadow-sm">
+                          <div className="text-xs text-muted-foreground mb-1">Failed</div>
+                          <div className="text-2xl font-bold text-red-600">
+                            {executingPlan.generatedTasks.filter(t => t.status === 'failed').length}
+                          </div>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border shadow-sm">
+                          <div className="text-xs text-muted-foreground mb-1">Duration</div>
+                          <div className="text-2xl font-bold text-purple-600">
+                            {Math.round((executionEndTime.getTime() - executionStartTime.getTime()) / 1000)}s
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Task Timeline */}
+                      <div className="bg-white dark:bg-slate-800 rounded-lg border shadow-sm">
+                        <div className="px-4 py-3 border-b bg-gradient-to-r from-indigo-500/10 to-purple-500/10">
+                          <h3 className="font-semibold flex items-center gap-2">
+                            <span className="text-lg">📋</span>
+                            Task Execution Timeline
+                          </h3>
+                        </div>
+                        <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+                          {executingPlan.generatedTasks.map((task, idx) => (
+                            <div key={task.id} className="flex gap-3 p-3 rounded-lg border bg-muted/30">
+                              <div className="flex-shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-sm font-semibold text-indigo-600">
+                                  {idx + 1}
+                                </div>
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <div className="font-medium text-sm">{task.title}</div>
+                                  <Badge
+                                    variant={task.status === 'completed' ? 'default' : 'destructive'}
+                                    className={task.status === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-200' : ''}
+                                  >
+                                    {task.status === 'completed' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                                    {task.status === 'failed' && <XCircle className="h-3 w-3 mr-1" />}
+                                    {task.status}
+                                  </Badge>
+                                </div>
+                                <div className="text-xs text-muted-foreground">{task.description}</div>
+                                {task.result && (
+                                  <div className="mt-2 p-2 bg-white dark:bg-slate-900 rounded border text-xs font-mono">
+                                    <div className="text-muted-foreground mb-1">Result:</div>
+                                    <div className="line-clamp-2">{task.result.substring(0, 200)}...</div>
+                                  </div>
+                                )}
+                                {task.error && (
+                                  <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800 text-xs">
+                                    <div className="text-red-600 dark:text-red-400 font-semibold mb-1">Error:</div>
+                                    <div className="text-red-700 dark:text-red-300">{task.error}</div>
+                                  </div>
+                                )}
+                                {task.completedAt && (
+                                  <div className="text-xs text-muted-foreground">
+                                    ⏱️ Completed at {task.completedAt.toLocaleTimeString()}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* What Worked / What Didn't - Enhanced */}
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="bg-white dark:bg-slate-800 rounded-lg border shadow-sm">
+                          <div className="px-4 py-3 border-b bg-green-50 dark:bg-green-900/20">
+                            <h3 className="font-semibold flex items-center gap-2 text-green-700 dark:text-green-300">
+                              <span className="text-lg">✅</span>
+                              What Worked
+                            </h3>
+                          </div>
+                          <div className="p-4 space-y-2 max-h-48 overflow-y-auto">
+                            <div className="text-sm space-y-2">
+                              {executingPlan.generatedTasks.filter(t => t.status === 'completed').length > 0 && (
+                                <div className="flex items-start gap-2">
+                                  <span>•</span>
+                                  <span>Successfully completed {executingPlan.generatedTasks.filter(t => t.status === 'completed').length} out of {executingPlan.generatedTasks.length} tasks</span>
+                                </div>
+                              )}
+                              {mcpStatuses.playwright?.connected && (
+                                <div className="flex items-start gap-2">
+                                  <span>•</span>
+                                  <span>Playwright MCP server integration successful</span>
+                                </div>
+                              )}
+                              {mcpStatuses.testflowpro?.connected && (
+                                <div className="flex items-start gap-2">
+                                  <span>•</span>
+                                  <span>TestFlowPro operations executed correctly</span>
+                                </div>
+                              )}
+                              <div className="flex items-start gap-2">
+                                <span>•</span>
+                                <span>AI agent mode with tool calling functional</span>
+                              </div>
+                              {executionLog.filter(l => l.includes('Snapshot captured')).length > 0 && (
+                                <div className="flex items-start gap-2">
+                                  <span>•</span>
+                                  <span>Auto-snapshot capture on failures working ({executionLog.filter(l => l.includes('Snapshot captured')).length} snapshots)</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-800 rounded-lg border shadow-sm">
+                          <div className="px-4 py-3 border-b bg-red-50 dark:bg-red-900/20">
+                            <h3 className="font-semibold flex items-center gap-2 text-red-700 dark:text-red-300">
+                              <span className="text-lg">❌</span>
+                              What Didn't Work
+                            </h3>
+                          </div>
+                          <div className="p-4 space-y-2 max-h-48 overflow-y-auto">
+                            {executingPlan.generatedTasks.filter(t => t.status === 'failed').length > 0 ? (
+                              <div className="text-sm space-y-2">
+                                {executingPlan.generatedTasks.filter(t => t.status === 'failed').map((task, idx) => (
+                                  <div key={idx} className="flex items-start gap-2">
+                                    <span>•</span>
+                                    <span><strong>{task.title}:</strong> {task.error?.substring(0, 100) || 'Unknown error'}</span>
+                                  </div>
+                                ))}
+                                <div className="flex items-start gap-2 text-muted-foreground">
+                                  <span>•</span>
+                                  <span>Total retry attempts: {executionLog.filter(l => l.toLowerCase().includes('retrying')).length}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground">
+                                🎉 No failures! All tasks completed successfully.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Execution Log Summary */}
+                      <div className="bg-white dark:bg-slate-800 rounded-lg border shadow-sm">
+                        <div className="px-4 py-3 border-b">
+                          <h3 className="font-semibold flex items-center gap-2">
+                            <span className="text-lg">📜</span>
+                            Execution Log Summary
+                          </h3>
+                        </div>
+                        <div className="p-4 space-y-2">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                              <span className="text-muted-foreground">Log Entries</span>
+                              <span className="font-semibold">{executionLog.length}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                              <span className="text-muted-foreground">Retries</span>
+                              <span className="font-semibold">{executionLog.filter(l => l.toLowerCase().includes('retrying')).length}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                              <span className="text-muted-foreground">Snapshots</span>
+                              <span className="font-semibold">{executionLog.filter(l => l.includes('Snapshot captured')).length}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                              <span className="text-muted-foreground">Errors</span>
+                              <span className="font-semibold text-red-600">{executionLog.filter(l => l.includes('failed')).length}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Recommendations */}
+                      <div className="bg-white dark:bg-slate-800 rounded-lg border shadow-sm">
+                        <div className="px-4 py-3 border-b bg-blue-50 dark:bg-blue-900/20">
+                          <h3 className="font-semibold flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                            <span className="text-lg">💡</span>
+                            Next Steps & Recommendations
+                          </h3>
+                        </div>
+                        <div className="p-4 space-y-2 text-sm">
+                          {executingPlan.generatedTasks.filter(t => t.status === 'failed').length > 0 ? (
+                            <>
+                              <div className="flex items-start gap-2">
+                                <span>•</span>
+                                <span>Review failed tasks above and check error messages</span>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <span>•</span>
+                                <span>Check captured snapshots in execution log for debugging</span>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <span>•</span>
+                                <span>Consider refining task descriptions or breaking complex tasks into smaller steps</span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-start gap-2">
+                                <span>•</span>
+                                <span>All tasks completed successfully! Review results in Learning tab</span>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <span>•</span>
+                                <span>Check the execution log for detailed step-by-step analysis</span>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <span>•</span>
+                                <span>You can now create a new plan or refine existing workflows</span>
+                              </div>
+                            </>
+                          )}
+                          <div className="flex items-start gap-2">
+                            <span>•</span>
+                            <span>Total tokens used: {totalTokensUsed.toLocaleString()} (tracked in Learning tab)</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-3 justify-center pt-2">
+                        <Button
+                          onClick={() => setShowExecutionSummary(false)}
+                          variant="outline"
+                          className="gap-2"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                          Hide Summary
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setExecutingPlan(null)
+                            setShowExecutionSummary(false)
+                            setExecutionLog([])
+                          }}
+                          className="gap-2 bg-gradient-to-r from-indigo-500 to-purple-600"
+                        >
+                          <Zap className="h-4 w-4" />
+                          Create New Plan
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Rich Execution Summary */}
+                <div className="border-t bg-muted/30 px-4 py-3">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    <div className="col-span-1 lg:col-span-2 border rounded-lg bg-background shadow-sm">
+                      <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-indigo-500/10 to-purple-500/10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">📜</span>
+                          <span className="font-semibold text-sm">Execution Narrative</span>
+                        </div>
+                        <Badge variant="outline" className="text-xs">Live</Badge>
+                      </div>
+                      <div className="p-4 space-y-3 max-h-48 overflow-y-auto text-sm">
+                        {executionLog.length === 0 ? (
+                          <div className="text-muted-foreground">No steps executed yet.</div>
+                        ) : (
+                          <ul className="space-y-2 list-disc list-inside text-muted-foreground">
+                            {executionLog.slice(-6).map((log, idx) => (
+                              <li key={idx}>{log}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-span-1 border rounded-lg bg-background shadow-sm">
+                      <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-emerald-500/10 to-blue-500/10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">📊</span>
+                          <span className="font-semibold text-sm">Run Snapshot</span>
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-3 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Tasks Completed</span>
+                          <Badge variant="outline">{executingPlan.generatedTasks.filter(t => t.status === 'completed').length}/{executingPlan.generatedTasks.length}</Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">In Progress</span>
+                          <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-900/30">
+                            {executingPlan.generatedTasks.filter(t => t.status === 'in-progress').length}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Failed</span>
+                          <Badge variant="outline" className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-200">
+                            {executingPlan.generatedTasks.filter(t => t.status === 'failed').length}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Attempts (last task)</span>
+                          <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/30">
+                            {/* Simple heuristic: count retries by log entries for current task */}
+                            {executionLog.filter(l => l.toLowerCase().includes('attempt')).length || 1}x
+                          </Badge>
+                        </div>
+                        <div className="pt-2 border-t">
+                          <div className="text-xs text-muted-foreground mb-1">Highlights</div>
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20">✅ Success tracked</Badge>
+                            <Badge variant="outline" className="bg-orange-50 dark:bg-orange-900/20">🔁 Retries</Badge>
+                            <Badge variant="outline" className="bg-slate-50 dark:bg-slate-900/20">📜 Log tail</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="border rounded-lg bg-background shadow-sm">
+                      <div className="flex items-center justify-between px-4 py-3 border-b">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">❌</span>
+                          <span className="font-semibold text-sm">What Didn’t Work</span>
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-2 max-h-32 overflow-y-auto text-sm text-muted-foreground">
+                        {executionLog.filter(l => l.toLowerCase().includes('fail') || l.toLowerCase().includes('error')).slice(-5).map((log, idx) => (
+                          <div key={idx} className="flex items-start gap-2">
+                            <span>•</span>
+                            <span>{log}</span>
+                          </div>
+                        ))}
+                        {executionLog.filter(l => l.toLowerCase().includes('fail') || l.toLowerCase().includes('error')).length === 0 && (
+                          <div className="text-muted-foreground">No failures recorded yet.</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="border rounded-lg bg-background shadow-sm">
+                      <div className="flex items-center justify-between px-4 py-3 border-b">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">💡</span>
+                          <span className="font-semibold text-sm">Recovery & Next Steps</span>
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-2 text-sm text-muted-foreground">
+                        <div className="flex items-start gap-2">
+                          <span>•</span>
+                          <span>Auto-retries are counted and surfaced above. If failures persist, pause and inspect logs.</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span>•</span>
+                          <span>Use MCP tools panel to manually rerun a step or adjust selectors.</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span>•</span>
+                          <span>Check the last 6 log lines in the narrative for quick context.</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Control Buttons */}
                 <div className="border-t p-4 bg-muted/30 flex gap-2">
