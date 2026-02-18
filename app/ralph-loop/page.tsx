@@ -502,6 +502,20 @@ Use tables, emojis, code blocks, and visual formatting. Be detailed and professi
     }
 
     const plan = { ...state.currentPlan }
+
+    // Auto-populate baseUrl from plan if not already set
+    if (!state.codeGenBaseUrl || state.codeGenBaseUrl === 'https://example.com') {
+      const planText = `${plan.requirements} ${plan.generatedTasks.map(t => `${t.title} ${t.description}`).join(' ')}`
+      const urlMatch = planText.match(/https?:\/\/[^\s\)"']+/)
+      if (urlMatch) {
+        const fullUrl = urlMatch[0]
+        const urlParts = fullUrl.match(/(https?:\/\/[^\/\s\)"']+)/)
+        if (urlParts) {
+          state.setCodeGenBaseUrl(urlParts[1])
+        }
+      }
+    }
+
     state.setExecutingPlan(plan)
     state.setIsExecuting(true)
     state.setCurrentTaskIndex(0)
@@ -587,6 +601,26 @@ Use tables, emojis, code blocks, and visual formatting. Be detailed and professi
     const hasTypeScriptCode = context.includes('page.') || context.includes('await ') || context.includes('playwright')
     const testCaseName = state.codeGenTestName || 'Test Case'
 
+    // Extract baseUrl from context if not provided
+    let baseUrl = state.codeGenBaseUrl
+    if (!baseUrl || baseUrl === 'https://example.com') {
+      // Try to extract URL from context
+      const urlMatch = context.match(/https?:\/\/[^\s\)"']+/)
+      if (urlMatch) {
+        const fullUrl = urlMatch[0]
+        // Extract protocol + domain
+        const urlParts = fullUrl.match(/(https?:\/\/[^\/\s\)"']+)/)
+        if (urlParts) {
+          baseUrl = urlParts[1]
+        }
+      }
+    }
+
+    // Final fallback
+    if (!baseUrl) {
+      baseUrl = 'https://example.com'
+    }
+
     if (state.codeGenTestType === 'UI' && hasTypeScriptCode) {
       return `Convert this Playwright TypeScript code to TestFlowPro UI Test Suite JSON.
 
@@ -597,7 +631,7 @@ REQUIRED SUITE FIELDS:
 - suiteName: "${state.codeGenSuiteName}"
 - applicationName: "${state.codeGenAppName}"
 - type: "UI"
-- baseUrl: "${state.codeGenBaseUrl || 'https://example.com'}"
+- baseUrl: "${baseUrl}"
 - testCases[0].name: "${testCaseName}"
 
 Convert ALL Playwright steps to testSteps array following TestFlowPro schema.
@@ -615,7 +649,7 @@ REQUIRED FIELDS:
 - suiteName: "${state.codeGenSuiteName}"
 - applicationName: "${state.codeGenAppName}"
 - type: "${state.codeGenTestType}"
-- baseUrl: "${state.codeGenBaseUrl || 'https://example.com'}"
+- baseUrl: "${baseUrl}"
 - testCases[0].name: "${testCaseName}"
 
 ${state.codeGenTestType === 'UI' 
@@ -895,6 +929,26 @@ CRITICAL REQUIREMENTS:
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
 
+  const extractAppNameFromUrl = (url: string): string => {
+    if (!url || url === 'https://example.com') return ''
+
+    try {
+      const urlObj = new URL(url)
+      const hostname = urlObj.hostname
+
+      // Remove www. prefix
+      const domain = hostname.replace(/^www\./, '')
+
+      // Extract main domain name (before first dot or entire if no dot)
+      const mainDomain = domain.split('.')[0]
+
+      // Convert to title case (e.g., 'google' -> 'Google', 'flipkart' -> 'Flipkart')
+      return mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1)
+    } catch {
+      return ''
+    }
+  }
+
   const deriveNameFromCode = (code: string) => {
     const testMatch = code.match(/test\(['"]([^'"]+)['"]/)
     if (testMatch?.[1]) return testMatch[1]
@@ -917,12 +971,28 @@ CRITICAL REQUIREMENTS:
   }, [state.requirementsInput, state.currentPlan?.title, state.executingPlan?.title, state.generatedCode])
 
   useEffect(() => {
-    if (!derivedBaseName) return
+    // Set application name from baseUrl if available
+    const appNameFromUrl = extractAppNameFromUrl(state.codeGenBaseUrl)
 
-    state.setCodeGenSuiteName(`${derivedBaseName} Suite`)
-    state.setCodeGenAppName(`${derivedBaseName} App`)
-    state.setCodeGenTestName(`${derivedBaseName} Test`)
-  }, [derivedBaseName, state])
+    if (appNameFromUrl) {
+      // Use domain-based app name (e.g., "Google", "Flipkart")
+      state.setCodeGenAppName(appNameFromUrl)
+
+      // Set suite name as "{AppName} Test Suite" if no better name
+      if (!derivedBaseName || derivedBaseName.toLowerCase().includes('open') || derivedBaseName.toLowerCase().includes('search')) {
+        state.setCodeGenSuiteName(`${appNameFromUrl} Test Suite`)
+        state.setCodeGenTestName(`${appNameFromUrl} Test Case`)
+      } else {
+        state.setCodeGenSuiteName(`${derivedBaseName} Suite`)
+        state.setCodeGenTestName(`${derivedBaseName} Test`)
+      }
+    } else if (derivedBaseName) {
+      // Fallback to derived name if no URL
+      state.setCodeGenSuiteName(`${derivedBaseName} Suite`)
+      state.setCodeGenAppName(`${derivedBaseName} App`)
+      state.setCodeGenTestName(`${derivedBaseName} Test`)
+    }
+  }, [derivedBaseName, state.codeGenBaseUrl, state])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">

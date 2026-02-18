@@ -209,6 +209,23 @@ export default function APITestFramework() {
     if (savedFrameworkPath) {
       setFrameworkPath(savedFrameworkPath)
     }
+
+    // Check for suite from Ralph Loop to edit
+    const ralphSuiteToEdit = sessionStorage.getItem('ralph-suite-to-edit')
+    if (ralphSuiteToEdit) {
+      try {
+        const suite = JSON.parse(ralphSuiteToEdit)
+        sessionStorage.removeItem('ralph-suite-to-edit')
+
+        // Wait a bit for the page to settle, then open editor
+        setTimeout(() => {
+          setSelectedSuite(suite)
+          setIsEditing(true)
+        }, 100)
+      } catch (error) {
+        console.error('Failed to parse Ralph suite:', error)
+      }
+    }
   }, [])
 
   // Add event listeners for navigation
@@ -279,11 +296,18 @@ export default function APITestFramework() {
       sessionStorage.setItem('editTestData', JSON.stringify({ testCaseIndex, testDataIndex }))
     }
 
+    const handleRefreshSuites = () => {
+      if (testSuitePath) {
+        loadTestSuitesFromPath(testSuitePath)
+      }
+    }
+
     window.addEventListener("navigate-to-results", handleNavigateToResults)
     window.addEventListener("navigate-to-results-from-editor", handleNavigateToResultsFromEditor)
     window.addEventListener("navigate-to-test-case-view", handleNavigateToTestCaseView)
     window.addEventListener("run-test-case", handleRunTestCase)
     window.addEventListener("navigate-to-test-case-edit", handleNavigateToTestCaseEdit)
+    window.addEventListener("refresh-suites", handleRefreshSuites)
 
     return () => {
       window.removeEventListener("navigate-to-results", handleNavigateToResults)
@@ -291,6 +315,7 @@ export default function APITestFramework() {
       window.removeEventListener("navigate-to-test-case-view", handleNavigateToTestCaseView)
       window.removeEventListener("run-test-case", handleRunTestCase)
       window.removeEventListener("navigate-to-test-case-edit", handleNavigateToTestCaseEdit)
+      window.removeEventListener("refresh-suites", handleRefreshSuites)
     }
   }, [testSuites])
 

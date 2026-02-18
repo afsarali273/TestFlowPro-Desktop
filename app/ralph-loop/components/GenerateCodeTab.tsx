@@ -1,11 +1,18 @@
 import { useMemo, useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Loader2, Sparkles, Code, Copy, Rocket, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, Sparkles, Code, Copy, Rocket, CheckCircle2, XCircle, Download, Edit } from 'lucide-react'
 import { CodeGenType, TestType } from '../types'
 import { useToast } from '@/hooks/use-toast'
 import dynamic from 'next/dynamic'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
@@ -59,7 +66,12 @@ export function GenerateCodeTab({
   onGeneratedCodeChange
 }: GenerateCodeTabProps) {
   const { toast } = useToast()
+  const router = useRouter()
   const [editorValue, setEditorValue] = useState('')
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [saveLocation, setSaveLocation] = useState('')
+  const [fileName, setFileName] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
 
   const languageLabel = useMemo(() => {
     switch (codeGenType) {
@@ -159,6 +171,119 @@ export function GenerateCodeTab({
       // Ignore theme redefinition errors in Monaco.
     }
   }, [])
+
+  const handleSaveSuite = useCallback(() => {
+    if (!generatedCode || codeGenType !== 'testflow') {
+      toast({
+        title: 'Cannot save',
+        description: 'Only TestFlowPro JSON suites can be saved',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(editorValue)
+      const defaultLocation = typeof window !== 'undefined'
+        ? localStorage.getItem('testSuitePath') || '/Users/afsarali/Repository/TestFlowPro/testSuites'
+        : '/Users/afsarali/Repository/TestFlowPro/testSuites'
+
+      const defaultFileName = `${(parsed.suiteName || 'test-suite').replace(/[^a-zA-Z0-9]/g, '_')}.json`
+
+      setSaveLocation(defaultLocation)
+      setFileName(defaultFileName)
+      setShowSaveDialog(true)
+    } catch (error) {
+      toast({
+        title: 'Invalid JSON',
+        description: 'The generated code is not valid JSON',
+        variant: 'destructive'
+      })
+    }
+  }, [generatedCode, codeGenType, editorValue, toast])
+
+  const handleConfirmSave = useCallback(async () => {
+    if (!editorValue || !saveLocation || !fileName) {
+      return
+    }
+
+    setIsSaving(true)
+
+    try {
+      const testSuite = JSON.parse(editorValue)
+
+      const response = await fetch('/api/save-test-suite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          testSuite,
+          location: saveLocation,
+          fileName: fileName
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: 'Success',
+          description: 'Test suite saved successfully'
+        })
+        setShowSaveDialog(false)
+        // Trigger refresh of test suites in main app
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('refresh-suites'))
+        }
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to save test suite',
+          variant: 'destructive'
+        })
+      }
+    } catch (error) {
+      console.error('Save error:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to save test suite',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }, [editorValue, saveLocation, fileName, toast])
+
+  const handleEditSuite = useCallback(() => {
+    if (!generatedCode || codeGenType !== 'testflow') {
+      toast({
+        title: 'Cannot edit',
+        description: 'Only TestFlowPro JSON suites can be edited',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      const testSuite = JSON.parse(editorValue)
+
+      // Store the suite in sessionStorage for the main page to pick up
+      sessionStorage.setItem('ralph-suite-to-edit', JSON.stringify(testSuite))
+
+      toast({
+        title: 'Opening Editor',
+        description: 'Navigating to test suite editor...'
+      })
+
+      // Navigate to main page
+      router.push('/')
+    } catch (error) {
+      toast({
+        title: 'Invalid JSON',
+        description: 'The generated code is not valid JSON',
+        variant: 'destructive'
+      })
+    }
+  }, [generatedCode, codeGenType, editorValue, toast, router])
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -360,18 +485,42 @@ export function GenerateCodeTab({
               </div>
             </div>
             {generatedCode && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  navigator.clipboard.writeText(editorValue)
-                  toast({ title: 'Code copied to clipboard!' })
-                }}
-                className="text-white hover:bg-white/10"
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    navigator.clipboard.writeText(editorValue)
+                    toast({ title: 'Code copied to clipboard!' })
+                  }}
+                  className="text-white hover:bg-white/10"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </Button>
+                {codeGenType === 'testflow' && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleEditSuite}
+                      className="text-white hover:bg-white/10"
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleSaveSuite}
+                      className="text-white hover:bg-white/10"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Save Suite
+                    </Button>
+                  </>
+                )}
+              </div>
             )}
           </div>
 
@@ -430,6 +579,60 @@ export function GenerateCodeTab({
           </div>
         )}
       </div>
+
+      {/* Save Suite Dialog */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save Test Suite</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Save Location</label>
+              <Input
+                value={saveLocation}
+                onChange={(e) => setSaveLocation(e.target.value)}
+                placeholder="/path/to/testSuites"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">File Name</label>
+              <Input
+                value={fileName}
+                onChange={(e) => setFileName(e.target.value)}
+                placeholder="test-suite.json"
+                className="mt-1"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowSaveDialog(false)}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmSave}
+                disabled={isSaving || !saveLocation || !fileName}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
