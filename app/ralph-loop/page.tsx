@@ -17,6 +17,11 @@ import { usePlanOperations } from './hooks/usePlanOperations'
 import { generatePlanWithAI, exploreAndGenerateScenarios } from './services'
 import { AI_CONFIG } from '@/ai-config'
 import type { Plan, LearningEntry } from '@/types/ralph-loop'
+import {
+  getCodePrompt,
+  getExecutionSummaryPrompt,
+  getTaskExecutionPrompt
+} from './prompts'
 
 export default function RalphLoopPage() {
   const state = useRalphLoop()
@@ -103,35 +108,23 @@ export default function RalphLoopPage() {
     const failedTasks = plan.generatedTasks.filter((t: any) => t.status === 'failed')
     const totalDuration = plan.generatedTasks.reduce((sum: number, t: any) => sum + (t.duration || 0), 0)
 
-    const summaryPrompt = `Generate a detailed execution summary in markdown format for this automation test execution:
-
-**Plan**: ${plan.title}
-**Total Tasks**: ${plan.generatedTasks.length}
-**Completed**: ${completedTasks.length}
-**Failed**: ${failedTasks.length}
-**Total Duration**: ${totalDuration}s
-
-**Tasks Executed**:
-${plan.generatedTasks.map((t: any, i: number) => `
-${i + 1}. **${t.title}** (${t.status})
-   - Description: ${t.description}
-   - Duration: ${t.duration || 'N/A'}s
-   - Result: ${t.result?.substring(0, 150) || t.error || 'N/A'}
-`).join('\n')}
-
-**Execution Log**:
-${state.executionLog.slice(-50).join('\n')}
-
-Create a comprehensive summary with:
-- 📊 Executive Summary with key metrics
-- ✅ Successful Operations (with details)
-- ❌ Failed Operations (with error analysis and retry attempts)
-- 🔧 Technical Details (locators used, approaches tried)
-- 📈 Performance Metrics (timing, success rate)
-- 💡 Insights & Recommendations
-- 🎯 Test Coverage Analysis
-
-Use tables, emojis, code blocks, and visual formatting. Be detailed and professional.`
+    const summaryPrompt = getExecutionSummaryPrompt({
+      planTitle: plan.title,
+      totalTasks: plan.generatedTasks.length,
+      completedTasks: completedTasks.length,
+      failedTasks: failedTasks.length,
+      totalDuration,
+      tasksExecuted: plan.generatedTasks.map((t: any, i: number) => ({
+        index: i,
+        title: t.title,
+        status: t.status,
+        description: t.description,
+        duration: t.duration,
+        result: t.result,
+        error: t.error
+      })),
+      executionLog: state.executionLog
+    })
 
     try {
       addLog('🔄 Generating execution summary...')
@@ -201,7 +194,7 @@ Use tables, emojis, code blocks, and visual formatting. Be detailed and professi
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Execute this task:\n\nTitle: ${task.title}\nDescription: ${task.description}\n\nProvide the result or steps taken.`,
+          message: getTaskExecutionPrompt(task.title, task.description),
           type: 'mcp-agent',
           provider: 'github-copilot',
           agentMode: true,
@@ -451,171 +444,102 @@ Use tables, emojis, code blocks, and visual formatting. Be detailed and professi
     return options?.maxChars ? truncateText(context, options.maxChars) : context
   }
 
-  const buildTestFlowPrompt = (context: string) => {
-    const hasTypeScriptCode = context.includes('page.') || context.includes('await ') || context.includes('playwright')
-    const testCaseName = state.codeGenTestName || 'Test Case'
-
-    // Extract baseUrl from context if not provided
-    let baseUrl = state.codeGenBaseUrl
-    if (!baseUrl || baseUrl === 'https://example.com') {
-      // Try to extract URL from context
-      const urlMatch = context.match(/https?:\/\/[^\s)"']+/)
-      if (urlMatch) {
-        const fullUrl = urlMatch[0]
-        // Extract protocol + domain
-        const urlParts = fullUrl.match(/(https?:\/\/[^\/\s)"']+)/)
-        if (urlParts) {
-          baseUrl = urlParts[1]
-        }
-      }
-    }
-
-    // Final fallback
-    if (!baseUrl) {
-      baseUrl = 'https://example.com'
-    }
-
-    if (state.codeGenTestType === 'UI' && hasTypeScriptCode) {
-      return `Convert this Playwright TypeScript code to TestFlowPro UI Test Suite JSON.
-
-${context}
-
-REQUIRED SUITE FIELDS:
-- id: "${state.codeGenSuiteName.toLowerCase().replace(/\s+/g, '-') }"
-- suiteName: "${state.codeGenSuiteName}"
-- applicationName: "${state.codeGenAppName}"
-- type: "UI"
-- baseUrl: "${baseUrl}"
-- testCases[0].name: "${testCaseName}"
-
-Convert ALL Playwright steps to testSteps array following TestFlowPro schema.
-Use proper locator strategies: role, text, css, xpath, testId, placeholder, label.
-Output ONLY valid JSON, no markdown or explanations.`
-    }
-
-    return `Generate a TestFlowPro Test Suite JSON for the following context.
-
-Context:
-${context}
-
-REQUIRED FIELDS:
-- id: "${state.codeGenSuiteName.toLowerCase().replace(/\s+/g, '-') }"
-- suiteName: "${state.codeGenSuiteName}"
-- applicationName: "${state.codeGenAppName}"
-- type: "${state.codeGenTestType}"
-- baseUrl: "${baseUrl}"
-- testCases[0].name: "${testCaseName}"
-
-${state.codeGenTestType === 'UI' 
-  ? 'Generate UI test suite with testSteps array using keywords: goto, click, fill, getText, assertVisible, etc.'
-  : 'Generate API test suite with testData array using method, endpoint, headers, body, assertions.'}
-
-Output ONLY valid JSON, no markdown.`
-  }
-
   const buildCodePrompt = (typeOverride?: typeof state.codeGenType, contextOverride?: string) => {
     const context = contextOverride ?? buildCodeContext()
-
     const effectiveType = typeOverride ?? state.codeGenType
 
-    if (effectiveType === 'testflow') {
-      return buildTestFlowPrompt(context)
+    // Helper functions to extract meaningful names from context
+    const getClassNameFromContext = () => {
+      // Try plan title first
+      if (state.currentPlan?.title) {
+        const title = state.currentPlan.title.trim()
+        const words = title.split(/\s+/).filter(w =>
+          w.length > 2 && !['the', 'and', 'for', 'with', 'from', 'open', 'then'].includes(w.toLowerCase())
+        )
+        if (words.length > 0) {
+          return words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('') + 'Test'
+        }
+      }
+
+      const reqLines = (state.requirementsInput || '').split('\n').filter(l => l.trim() && l.trim().length > 5)
+      if (reqLines.length > 0) {
+        const line = reqLines[0].replace(/^\d+[.)]\s*/, '').trim()
+        const words = line.split(/\s+/).filter(w =>
+          w.length > 2 && !['the', 'and', 'for', 'with', 'from'].includes(w.toLowerCase())
+        ).slice(0, 3)
+        if (words.length > 0) {
+          return words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('') + 'Test'
+        }
+      }
+
+      const ctx = buildCodeContext({ maxLogLines: 5, maxChars: 300 })
+      const urlMatch = ctx.match(/(?:navigate to|open|goto|visit)\s+(?:https?:\/\/)?([a-z0-9-.]+)/i)
+      if (urlMatch?.[1]) {
+        const domain = urlMatch[1].split('.')[0]
+        return domain.charAt(0).toUpperCase() + domain.slice(1).toLowerCase() + 'Test'
+      }
+
+      return 'PlaywrightTest'
     }
 
-    if (effectiveType === 'cucumber') {
-      return `Convert this test execution context to Cucumber/Gherkin feature file.
+    const getFunctionNameFromContext = () => {
+      if (state.currentPlan?.title) {
+        return state.currentPlan.title.trim().slice(0, 40)
+      }
 
-Context:
-${context}
+      const reqLines = (state.requirementsInput || '').split('\n').filter(l => l.trim() && l.trim().length > 5)
+      if (reqLines.length > 0) {
+        return reqLines[0].replace(/^\d+[.)]\s*/, '').trim().slice(0, 40)
+      }
 
-Use ONLY the predefined Cucumber step definitions for UI automation.
-Generate a complete Gherkin feature file with:
-- Feature description with business value
-- Appropriate tags (@smoke, @regression, @ui)
-- Background for common setup
-- Well-structured scenarios with Given/When/Then
-- Use variables \${varName} for dynamic data
-- Add explicit waits before assertions
+      const ctx = buildCodeContext({ maxLogLines: 5, maxChars: 300 })
+      const urlMatch = ctx.match(/(?:navigate to|open|goto|visit)\s+(?:https?:\/\/)?([a-z0-9-.]+)/i)
+      if (urlMatch?.[1]) {
+        const domain = urlMatch[1].split('.')[0]
+        return `test ${domain}`
+      }
 
-Output ONLY the Gherkin feature file. No explanations.`
+      return 'generated test'
     }
 
-    // Generate dynamic class name from plan title or requirements
-    const className = (state.currentPlan?.title ||
-                      state.requirementsInput.split('\n')[0].slice(0, 30) ||
-                      'PlaywrightTest')
-                      .replace(/[^a-zA-Z0-9]/g, '')
-                      .replace(/^[0-9]/, 'Test$&') || 'PlaywrightTest'
+    const getTestNameFromContext = () => {
+      if (state.currentPlan?.title) {
+        return state.currentPlan.title.trim()
+      }
 
-    if (effectiveType === 'java') {
-      return `Generate a COMPLETE Java (Playwright) test file based on the context below.
+      const reqLines = (state.requirementsInput || '').split('\n').filter(l => l.trim() && l.trim().length > 5)
+      if (reqLines.length > 0) {
+        return reqLines[0].replace(/^\d+[.)]\s*/, '').trim().slice(0, 60)
+      }
 
-Context:
-${context}
+      const ctx = buildCodeContext({ maxLogLines: 5, maxChars: 300 })
+      const actionMatch = ctx.match(/(?:Task \d+:|Description:)\s*([^\n]{10,80})/i)
+      if (actionMatch?.[1]) {
+        return actionMatch[1].trim()
+      }
 
-CRITICAL REQUIREMENTS:
-1. Output a FULL Java file (imports + public class ${className} + main method).
-2. Use: import com.microsoft.playwright.*;
-3. Use try-with-resources for Playwright.create().
-4. Use BrowserType.LaunchOptions().setHeadless(false).
-5. Use semantic locators (getByRole, getByText, getByLabel, getByPlaceholder, getByTestId).
-6. If a locator might match multiple elements, use .first().
-7. Include waits (page.waitForLoadState(), locator.waitFor()).
-8. Handle dialogs if needed: page.onDialog(dialog -> dialog.accept());
-9. Add assertions where sensible.
-10. Output ONLY valid Java code. No markdown, no explanations.`
+      return 'Generated Test'
     }
 
-    // Generate dynamic function name from plan title or requirements
-    const functionName = 'test_' + (state.currentPlan?.title ||
-                                    state.requirementsInput.split('\n')[0].slice(0, 30) ||
-                                    'generated')
-                                    .toLowerCase()
-                                    .replace(/[^a-z0-9]/g, '_')
-                                    .replace(/_+/g, '_')
-                                    .replace(/^_|_$/g, '') || 'test_generated'
-
-    if (effectiveType === 'python') {
-      return `Generate a COMPLETE Python (Playwright) test file based on the context below.
-
-Context:
-${context}
-
-CRITICAL REQUIREMENTS:
-1. Output a FULL Python file (imports + def ${functionName}() function).
-2. Use: from playwright.sync_api import sync_playwright, expect
-3. Use sync_playwright() context manager.
-4. Launch with headless=False.
-5. Use semantic locators (get_by_role, get_by_text, get_by_label, get_by_placeholder, get_by_test_id).
-6. If a locator might match multiple elements, use .first.
-7. Include waits (page.wait_for_load_state(), locator.wait_for()).
-8. Handle dialogs if needed: page.on("dialog", lambda dialog: dialog.accept())
-9. Add expect() assertions where sensible.
-10. Output ONLY valid Python code. No markdown, no explanations.`
+    // Prepare context based on type
+    const codeContext = {
+      context,
+      className: getClassNameFromContext().replace(/[^a-zA-Z0-9]/g, '').replace(/^[0-9]/, 'Test$&') || 'PlaywrightTest',
+      functionName: 'test_' + getFunctionNameFromContext()
+                                .toLowerCase()
+                                .replace(/[^a-z0-9\s]/g, '')
+                                .replace(/\s+/g, '_')
+                                .replace(/_+/g, '_')
+                                .replace(/^_|_$/g, '') || 'test_generated',
+      testName: getTestNameFromContext(),
+      suiteName: state.codeGenSuiteName,
+      applicationName: state.codeGenAppName,
+      baseUrl: state.codeGenBaseUrl,
+      testType: state.codeGenTestType,
+      testCaseName: state.codeGenTestName
     }
 
-    // Generate dynamic test name from plan title or requirements
-    const testName = state.currentPlan?.title ||
-                     state.requirementsInput.split('\n')[0].slice(0, 50) ||
-                     'Generated Test'
-
-    return `Generate a COMPLETE TypeScript (Playwright) test file based on the context below.
-
-Context:
-${context}
-
-CRITICAL REQUIREMENTS:
-1. Output a FULL Playwright test file (imports + test wrapper + body).
-2. Use: import { test, expect } from '@playwright/test';
-3. Use: test('${testName.trim()}', async ({ page }) => { ... });
-4. Ensure ALL parentheses (), braces {}, and brackets [] are CLOSED.
-5. Use semantic locators (getByRole, getByText, getByLabel, getByPlaceholder, getByTestId).
-6. If a locator might match multiple elements, add .first() or use exact: true.
-7. Include waits (await page.waitForLoadState(), await element.waitFor()).
-8. Handle dialogs: page.on('dialog', dialog => dialog.accept()) at the start of the test if needed.
-9. Add expect() assertions where sensible.
-10. ALL async operations MUST use await.
-11. Output ONLY valid TypeScript code. No markdown, no explanations.`
+    return getCodePrompt(effectiveType, codeContext)
   }
 
   const generateCode = async (type?: typeof state.codeGenType) => {
@@ -687,6 +611,16 @@ CRITICAL REQUIREMENTS:
 
       const ragType = isTestFlow ? (state.codeGenTestType === 'API' ? 'general' : 'ui') : 'general'
 
+      // Log what we're sending to AI
+      console.log('📤 Sending to AI for code generation:', {
+        type: effectiveType,
+        suiteName: state.codeGenSuiteName,
+        applicationName: state.codeGenAppName,
+        testCaseName: state.codeGenTestName,
+        baseUrl: state.codeGenBaseUrl,
+        testType: state.codeGenTestType
+      })
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -711,12 +645,275 @@ CRITICAL REQUIREMENTS:
         return
       }
 
+      console.log('📥 Received AI response:', {
+        outputLength: output.length,
+        outputPreview: output.substring(0, 200)
+      })
+
       let cleanedOutput = output
-      const codeBlockMatch = cleanedOutput.match(/```(?:typescript|javascript|ts|java|python|py)?\s*([\s\S]*?)```/)
+      const codeBlockMatch = cleanedOutput.match(/```(?:typescript|javascript|ts|java|python|py|json)?\s*([\s\S]*?)```/)
       if (codeBlockMatch) {
         cleanedOutput = codeBlockMatch[1].trim()
+        console.log('✂️ Stripped code fences, new length:', cleanedOutput.length)
       }
 
+      // --- New: Extract names (suite/test/app/baseUrl) from AI output or context ---
+      try {
+        // Helper sanitizers
+        const sanitizeForName = (s: string) => (s || '').toString().trim()
+          .replace(/\s+/g, ' ')
+          .replace(/[^\w\s\-]/g, '')
+          .trim()
+
+        const titleCaseName = (s: string) => sanitizeForName(s)
+          .split(' ')
+          .filter(Boolean)
+          .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+          .join(' ')
+
+        // local timestamp detector to avoid names like 16723423423
+        const isTimestampLocal = (v?: string) => {
+          if (!v) return false
+          if (/\d{6,}/.test(v)) return true
+          if (/20\d{2}-\d{2}-\d{2}/.test(v)) return true
+          return false
+        }
+
+        // If AI returned metadata with suggested names, prefer them (and validate)
+        const meta = (data && (data.metadata || data.meta || {})) || {}
+        if (meta) {
+          try {
+            if (meta.suiteName && typeof meta.suiteName === 'string' && !isTimestampLocal(meta.suiteName)) {
+              state.setCodeGenSuiteName(titleCaseName(meta.suiteName))
+            }
+            if (meta.applicationName && typeof meta.applicationName === 'string' && !isTimestampLocal(meta.applicationName)) {
+              state.setCodeGenAppName(titleCaseName(meta.applicationName))
+            }
+            if ((meta.testName || meta.testCaseName) && typeof (meta.testName || meta.testCaseName) === 'string' && !isTimestampLocal(meta.testName || meta.testCaseName)) {
+              state.setCodeGenTestName(titleCaseName(meta.testName || meta.testCaseName))
+            }
+            if (meta.baseUrl && typeof meta.baseUrl === 'string' && !meta.baseUrl.includes('example.com')) {
+              state.setCodeGenBaseUrl(meta.baseUrl)
+            }
+          } catch (e) {
+            // ignore metadata failures
+          }
+        }
+
+        // 1) If TestFlow JSON, parse and ENFORCE correct names from UI state
+        if (effectiveType === 'testflow') {
+          try {
+            const parsed = JSON.parse(cleanedOutput)
+            if (parsed) {
+              // Log what we're enforcing
+              console.log('🔧 Enforcing TestFlow names:', {
+                suiteName: state.codeGenSuiteName,
+                applicationName: state.codeGenAppName,
+                testCaseName: state.codeGenTestName,
+                baseUrl: state.codeGenBaseUrl
+              })
+
+              // ENFORCE the correct values from UI state (UI state takes precedence)
+              if (state.codeGenSuiteName && state.codeGenSuiteName.trim()) {
+                parsed.suiteName = state.codeGenSuiteName
+                // Also update the ID to match
+                parsed.id = state.codeGenSuiteName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+              }
+
+              if (state.codeGenAppName && state.codeGenAppName.trim()) {
+                parsed.applicationName = state.codeGenAppName
+              }
+
+              if (state.codeGenBaseUrl && state.codeGenBaseUrl.trim() && !state.codeGenBaseUrl.includes('example.com')) {
+                parsed.baseUrl = state.codeGenBaseUrl
+              }
+
+              // Update test case names to match what's in UI
+              if (parsed.testCases && Array.isArray(parsed.testCases) && parsed.testCases.length > 0) {
+                if (state.codeGenTestName && state.codeGenTestName.trim()) {
+                  parsed.testCases.forEach((testCase: any) => {
+                    testCase.name = state.codeGenTestName
+                  })
+                }
+              }
+
+              console.log('✅ Enforced TestFlow JSON:', {
+                suiteName: parsed.suiteName,
+                applicationName: parsed.applicationName,
+                testCaseName: parsed.testCases?.[0]?.name,
+                baseUrl: parsed.baseUrl
+              })
+
+              // Update the output with corrected JSON
+              cleanedOutput = JSON.stringify(parsed, null, 2)
+
+              // DO NOT overwrite UI state - we just enforced these values
+              // The UI state is the source of truth
+            }
+          } catch (e) {
+            console.error('Failed to parse TestFlow JSON, using regex fallback:', e)
+            // Fallback: try regex to force replace the names in the JSON string
+            try {
+              const suiteId = (state.codeGenSuiteName || 'test-suite')
+                .toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^a-z0-9-]/g, '')
+
+              // Replace suiteName
+              if (state.codeGenSuiteName && state.codeGenSuiteName.trim()) {
+                cleanedOutput = cleanedOutput.replace(
+                  /"suiteName"\s*:\s*"[^"]*"/g,
+                  `"suiteName": "${state.codeGenSuiteName}"`
+                )
+              }
+
+              // Replace applicationName
+              if (state.codeGenAppName && state.codeGenAppName.trim()) {
+                cleanedOutput = cleanedOutput.replace(
+                  /"applicationName"\s*:\s*"[^"]*"/g,
+                  `"applicationName": "${state.codeGenAppName}"`
+                )
+              }
+
+              // Replace baseUrl
+              if (state.codeGenBaseUrl && state.codeGenBaseUrl.trim()) {
+                cleanedOutput = cleanedOutput.replace(
+                  /"baseUrl"\s*:\s*"[^"]*"/g,
+                  `"baseUrl": "${state.codeGenBaseUrl}"`
+                )
+              }
+
+              // Replace id (suite id)
+              cleanedOutput = cleanedOutput.replace(
+                /"id"\s*:\s*"[^"]*"/g,
+                `"id": "${suiteId}"`
+              )
+
+              // Replace test case name (first testCases[0].name)
+              if (state.codeGenTestName && state.codeGenTestName.trim()) {
+                cleanedOutput = cleanedOutput.replace(
+                  /(testCases[^}]*"name"\s*:\s*)"[^"]*"/,
+                  `$1"${state.codeGenTestName}"`
+                )
+              }
+
+              console.log('✅ Applied regex replacements for TestFlow names')
+            } catch (replaceError) {
+              console.error('Could not regex replace TestFlow names:', replaceError)
+            }
+          }
+        } else {
+          // 2) For code outputs (TypeScript/Java/Python), ENFORCE correct names by replacing in code
+
+          // First, try to get the correct name from UI state or derive a good one
+          let correctTestName = state.codeGenTestName || 'Generated Test'
+          let correctClassName = state.codeGenSuiteName?.replace(/\s+Suite$/i, '').replace(/\s+/g, '') || 'PlaywrightTest'
+          let correctFunctionName = 'test_' + (state.codeGenTestName || 'generated').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+
+          // Remove timestamp patterns from the names if they exist
+          const timestampPattern = /\s*-?\s*\d{1,2}\/\d{1,2}\/\d{4}[,\s]*\d{1,2}:\d{2}:\d{2}/g
+          correctTestName = correctTestName.replace(timestampPattern, '').trim()
+          correctClassName = correctClassName.replace(timestampPattern, '').replace(/\s+/g, '')
+          correctFunctionName = correctFunctionName.replace(timestampPattern, '').replace(/_+/g, '_')
+
+          console.log('🔧 Enforcing code names:', {
+            type: effectiveType,
+            testName: correctTestName,
+            className: correctClassName,
+            functionName: correctFunctionName
+          })
+
+          // Replace timestamp-based names in the generated code
+          if (effectiveType === 'typescript') {
+            // Replace test('timestamp', ...) with test('Correct Name', ...)
+            cleanedOutput = cleanedOutput.replace(
+              /test\s*\(\s*['"`]([^'"`]*(?:\d{1,2}\/\d{1,2}\/\d{4}|\d{2}:\d{2}:\d{2})[^'"`]*?)['"`]/g,
+              `test('${correctTestName}'`
+            )
+            // Also catch any test name with "Test Plan -" pattern
+            cleanedOutput = cleanedOutput.replace(
+              /test\s*\(\s*['"`]Test Plan[^'"`]*?['"`]/g,
+              `test('${correctTestName}'`
+            )
+            console.log('✅ Replaced TypeScript test name with:', correctTestName)
+          }
+
+          if (effectiveType === 'java') {
+            // Replace class ClassName123 or class TestPlanTimestamp
+            cleanedOutput = cleanedOutput.replace(
+              /class\s+(?:TestPlan\d+|Test\d{8,}|[A-Za-z]+\d{8,})\s*\{/g,
+              `class ${correctClassName} {`
+            )
+            // Replace timestamp-based class names
+            cleanedOutput = cleanedOutput.replace(
+              /class\s+([A-Za-z]+\d{1,2}\d{1,2}\d{4}\d+)\s*\{/g,
+              `class ${correctClassName} {`
+            )
+            console.log('✅ Replaced Java class name with:', correctClassName)
+          }
+
+          if (effectiveType === 'python') {
+            // Replace def test_timestamp(): with def test_correct_name():
+            cleanedOutput = cleanedOutput.replace(
+              /def\s+(test_[a-z0-9_]*(?:\d{8,}|test_plan_\d+)[a-z0-9_]*)\s*\(/g,
+              `def ${correctFunctionName}(`
+            )
+            console.log('✅ Replaced Python function name with:', correctFunctionName)
+          }
+
+          // Now try to derive and update UI state if needed
+          const derived = deriveNameFromCode(cleanedOutput)
+          if (derived && !looksLikeTimestamp(derived)) {
+            // If derived seems like a full sentence (test name), use as test name
+            if (effectiveType === 'typescript' || effectiveType === 'java' || effectiveType === 'python') {
+              // For TypeScript use as test name; for Java use as class name; for Python create function name
+              if (effectiveType === 'typescript') state.setCodeGenTestName(titleCaseName(derived))
+              if (effectiveType === 'java') state.setCodeGenSuiteName(titleCaseName(derived))
+              if (effectiveType === 'python') state.setCodeGenTestName(titleCaseName(derived))
+            }
+          } else {
+            // 3) No derived name - build from context (plan title / requirements / execution log)
+            const ctx = buildCodeContext({ maxLogLines: 10, maxChars: 1200 })
+            // Prefer plan title
+            const planTitle = state.currentPlan?.title?.trim()
+            const firstReqLine = (state.requirementsInput || '').split('\n').find(l => l.trim())
+            const seed = planTitle || firstReqLine || ctx.split('\n')[0] || 'Generated Test'
+            const shortSeed = seed.toString().slice(0, 60)
+            const suggestedSuite = titleCaseName(shortSeed) + ' Suite'
+            const suggestedTest = titleCaseName(shortSeed) + ' Test'
+
+            if (!state.codeGenSuiteName || state.codeGenSuiteName.includes('example') || state.codeGenSuiteName.match(/\d{10,}/)) {
+              state.setCodeGenSuiteName(suggestedSuite)
+            }
+            if (!state.codeGenTestName || state.codeGenTestName.includes('test') && state.codeGenTestName.match(/\d{10,}/)) {
+              state.setCodeGenTestName(suggestedTest)
+            }
+          }
+
+          // 4) Try to populate application name & baseUrl from context if missing
+          if ((!state.codeGenAppName || state.codeGenAppName === '') || state.codeGenAppName.includes('example')) {
+            // Try from baseUrl first
+            const ctx = buildCodeContext({ maxLogLines: 20, maxChars: 3000 })
+            const urlMatch = ctx.match(/https?:\/\/[^\s)"']+/)
+            if (urlMatch) {
+              const fullUrl = urlMatch[0]
+              const baseParts = fullUrl.match(/(https?:\/\/[^\/\s)"']+)/)
+              if (baseParts) {
+                const candidate = extractAppNameFromUrl(baseParts[1])
+                if (candidate) state.setCodeGenAppName(candidate)
+                if (!state.codeGenBaseUrl || state.codeGenBaseUrl.includes('example.com')) state.setCodeGenBaseUrl(baseParts[1])
+              }
+            } else if (!state.codeGenAppName) {
+              // Fallback to derivedBaseName
+              if (derivedBaseName) state.setCodeGenAppName(derivedBaseName)
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Name extraction failed:', e)
+      }
+
+      // Persist generated code and update UI state
       state.setGeneratedCode(cleanedOutput)
       state.toast({
         title: '✅ Code Generated',
@@ -825,14 +1022,42 @@ CRITICAL REQUIREMENTS:
   }
 
   const deriveNameFromCode = (code: string) => {
-    const testMatch = code.match(/test\(['"]([^'"]+)['"]/)
-    if (testMatch?.[1]) return testMatch[1]
+    if (!code) return ''
+    // Common patterns for Playwright / Mocha / Jest tests
+    const testMatch = code.match(/test\(\s*['"`]([^'"`]+)['"`]\s*,/i)
+    if (testMatch?.[1]) return testMatch[1].trim()
+    const describeMatch = code.match(/describe\(\s*['"`]([^'"`]+)['"`]\s*,/i)
+    if (describeMatch?.[1]) return describeMatch[1].trim()
+    const itMatch = code.match(/\b(it|specify)\(\s*['"`]([^'"`]+)['"`]\s*,/i)
+    if (itMatch?.[2]) return itMatch[2].trim()
+
+    // Java class
     const classMatch = code.match(/class\s+([A-Za-z0-9_]+)/)
     if (classMatch?.[1]) return classMatch[1]
-    const nameMatch = code.match(/suiteName\s*[:=]\s*['"]([^'"]+)['"]/)
-    if (nameMatch?.[1]) return nameMatch[1]
+
+    // Common JSON keys
+    const jsonNameMatch = code.match(/(?:"|')?(?:suiteName|suite_name|suite|applicationName|application_name|appName|name|title|testName|test_name)\b\s*[:=]\s*(?:"|')([^"']+)(?:"|')/i)
+    if (jsonNameMatch?.[1]) return jsonNameMatch[1].trim()
+
+    // Inline comment patterns
+    const commentMatch = code.match(/(?:\/\/|#|\/\*)\s*(?:Test Name|Test|Scenario|Suite|Feature)[:\-]?\s*([^\n\*]+)/i)
+    if (commentMatch?.[1]) return commentMatch[1].trim()
+
     return ''
   }
+
+  // Helper to detect timestamp-like or numeric names that are not meaningful
+  const looksLikeTimestamp = (s?: string) => {
+    if (!s) return false
+    // long digit sequences, or ISO dates
+    if (/\d{6,}/.test(s)) return true
+    if (/20\d{2}-\d{2}-\d{2}/.test(s)) return true
+    return false
+  }
+
+  // Later, when extracting names from cleanedOutput, use expanded key searches
+  // (The main extraction logic above already covers many cases)
+
 
   const derivedBaseName = useMemo(() => {
     const raw = state.requirementsInput

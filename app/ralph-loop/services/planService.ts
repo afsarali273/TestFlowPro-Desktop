@@ -27,9 +27,24 @@ export async function generatePlanWithAI(
 
     const tasks = parsePlanToTasks(planText)
 
+    // Generate meaningful plan title from requirements
+    const generatePlanTitle = (reqs: string): string => {
+      const firstLine = reqs.split('\n')[0].trim()
+      // Remove numbering like "1. " or "1) "
+      const cleaned = firstLine.replace(/^\d+[.)]\s*/, '').trim()
+      // Limit to reasonable length
+      const title = cleaned.slice(0, 60)
+      // Title case
+      const titleCased = title.split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ')
+
+      return titleCased || 'Test Plan'
+    }
+
     const plan: Plan = {
       id: `plan-${Date.now()}`,
-      title: `Test Plan - ${new Date().toLocaleString()}`,
+      title: generatePlanTitle(requirementsInput),
       requirements: requirementsInput,
       generatedTasks: tasks,
       createdAt: new Date(),
