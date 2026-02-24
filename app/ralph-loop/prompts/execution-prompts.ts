@@ -68,12 +68,17 @@ Use tables, emojis, code blocks, and visual formatting. Be detailed and professi
 /**
  * Generate task execution prompt
  */
-export const getTaskExecutionPrompt = (taskTitle: string, taskDescription: string): string => {
-  return `Execute this task:
+export const getTaskExecutionPrompt = (taskTitle: string, taskDescription: string, targetUrl?: string): string => {
+  const urlConstraint = targetUrl
+    ? `\n⚠️ TARGET WEBSITE: ${targetUrl}\nYou MUST only interact with this website. If the browser is not already on this page, navigate there first using browser_navigate.\nDO NOT navigate to any other domain or website.\n`
+    : ''
 
+  return `Execute this task:
+${urlConstraint}
 Title: ${taskTitle}
 Description: ${taskDescription}
 
+${targetUrl ? `IMPORTANT: This task is for the website ${targetUrl}. Always start by ensuring you are on the correct site.` : ''}
 Provide the result or steps taken.`
 }
 

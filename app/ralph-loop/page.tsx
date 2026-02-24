@@ -194,7 +194,7 @@ export default function RalphLoopPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: getTaskExecutionPrompt(task.title, task.description),
+          message: getTaskExecutionPrompt(task.title, task.description, plan.explorationUrl),
           type: 'mcp-agent',
           provider: 'github-copilot',
           agentMode: true,

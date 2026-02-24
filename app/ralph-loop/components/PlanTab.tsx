@@ -55,12 +55,12 @@ export function PlanTab({
         onExploreAndGenerate={onExploreAndGenerate}
       />
 
-      {/* Exploration Summary */}
+      {/* Exploration Summary — shown before tasks when in exploratory mode */}
       {currentPlan?.explorationSummary && (
         <ExplorationReport plan={currentPlan} />
       )}
 
-      {/* Task Breakdown */}
+      {/* Task / Scenario Breakdown */}
       {currentPlan && currentPlan.generatedTasks.length > 0 && (
         <TasksBreakdown
           plan={currentPlan}

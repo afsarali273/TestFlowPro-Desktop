@@ -340,20 +340,80 @@ export class CopilotSDKService {
   }
 
   /**
+   * Sanitize browser_evaluate function argument to avoid Playwright serialization errors.
+   * Playwright MCP browser_evaluate requires simple, serializable function strings.
+   * Complex arrow functions with closures fail with "Passed function is not well-serializable!"
+   */
+  private sanitizeBrowserEvaluateArgs(args: any): { toolName: string; sanitizedArgs: any } {
+    const fn = args.function || args.code || '';
+
+    if (!fn || typeof fn !== 'string') {
+      return { toolName: 'browser_evaluate', sanitizedArgs: args };
+    }
+
+    // Detect non-serializable patterns: complex closures that Playwright MCP can't serialize
+    const isComplex = (
+      /Array\.from\(/.test(fn) ||
+      /querySelectorAll\s*\(/.test(fn) ||
+      /\.filter\s*\(el/.test(fn) ||
+      /\.forEach\s*\(el/.test(fn) ||
+      /\.map\s*\(el/.test(fn) ||
+      /getComputedStyle/.test(fn) ||
+      /document\.querySelectorAll/.test(fn)
+    );
+
+    if (isComplex) {
+      console.log(`⚠️ Detected complex browser_evaluate → using browser_run_code instead`);
+      // browser_run_code takes a Playwright async function and handles serialization properly
+      return {
+        toolName: 'browser_run_code',
+        sanitizedArgs: {
+          code: `async (page) => { return await page.evaluate(${fn}); }`
+        }
+      };
+    }
+
+    return { toolName: 'browser_evaluate', sanitizedArgs: args };
+  }
+
+  /**
    * NEW: Execute MCP tool
    */
   private async executeMCPTool(toolName: string, args: any): Promise<string> {
     try {
+      // Sanitize browser_evaluate calls to prevent serialization errors
+      let actualToolName = toolName;
+      let actualArgs = args;
+
+      if (toolName === 'browser_evaluate') {
+        const sanitized = this.sanitizeBrowserEvaluateArgs(args);
+        actualToolName = sanitized.toolName;
+        actualArgs = sanitized.sanitizedArgs;
+        if (actualToolName !== toolName) {
+          console.log(`🔄 Redirected browser_evaluate → ${actualToolName}`);
+        }
+      }
+
       // Find which server has this tool
       const toolsResponse = await fetch('http://localhost:3000/api/mcp-servers?action=list-tools');
       const toolsData = await toolsResponse.json();
-      const tool = toolsData.tools?.find((t: any) => t.name === toolName);
+      const tool = toolsData.tools?.find((t: any) => t.name === actualToolName);
 
       if (!tool) {
-        return `Error: Tool ${toolName} not found`;
+        // If redirected tool not found, fall back to original
+        if (actualToolName !== toolName) {
+          console.log(`⚠️ ${actualToolName} not found, falling back to ${toolName}`);
+          actualToolName = toolName;
+          actualArgs = args;
+          const origTool = toolsData.tools?.find((t: any) => t.name === toolName);
+          if (!origTool) return `Error: Tool ${toolName} not found`;
+        } else {
+          return `Error: Tool ${actualToolName} not found`;
+        }
       }
 
-      console.log(`🔧 Executing MCP tool: ${toolName} on server: ${tool.server}`);
+      const resolvedTool = toolsData.tools?.find((t: any) => t.name === actualToolName);
+      console.log(`🔧 Executing MCP tool: ${actualToolName} on server: ${resolvedTool?.server}`);
 
       // Execute the tool via API
       const response = await fetch('http://localhost:3000/api/mcp-servers', {
@@ -361,9 +421,9 @@ export class CopilotSDKService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'execute-tool',
-          serverId: tool.server,
-          toolName: toolName,
-          args: args
+          serverId: resolvedTool?.server,
+          toolName: actualToolName,
+          args: actualArgs
         })
       });
 
@@ -373,7 +433,13 @@ export class CopilotSDKService {
         console.log(`✅ Tool executed successfully:`, result.result);
         // Extract text content from MCP response
         if (result.result?.content) {
-          return result.result.content.map((c: any) => c.text).join('\n');
+          const content = result.result.content.map((c: any) => c.text).join('\n');
+          // If the MCP returned an error on browser_evaluate, give a helpful message
+          if (result.result.isError && toolName === 'browser_evaluate') {
+            console.warn(`⚠️ browser_evaluate error (serialization issue): ${content}`);
+            return `[browser_evaluate skipped - complex function not serializable. Use browser_snapshot to inspect elements instead.]`;
+          }
+          return content;
         }
         return JSON.stringify(result.result);
       } else {
@@ -480,7 +546,7 @@ export class CopilotSDKService {
         messages,
         model: options.model || 'gpt-4o',
         temperature: options.temperature || 0.7,
-        max_tokens: 4096,
+        max_tokens: 16384, // Increased for exploratory testing sessions
         top_p: 0.95,
         n: 1,
         stream: false
@@ -523,7 +589,7 @@ export class CopilotSDKService {
 
       // Handle function/tool calls (Agent Mode)
       let toolCallsExecuted = 0;
-      const maxToolCalls = 10; // Prevent infinite loops
+      const maxToolCalls = 150; // Allow deep exploration (navigation + clicks + snapshots)
       const executionSteps: any[] = [];
 
       while (assistantMessage?.tool_calls && toolCallsExecuted < maxToolCalls) {
@@ -565,8 +631,11 @@ export class CopilotSDKService {
           executionStep.javaCode = this.extractJavaCodeFromMCPResult(functionName, functionArgs, toolResult);
 
           // Truncate tool result to prevent token limit issues
-          const truncatedResult = toolResult.length > 2000
-            ? toolResult.substring(0, 2000) + '\n... (truncated, result was too long)'
+          // Snapshots need more context as they contain element refs needed for clicking
+          const isSnapshot = functionName === 'browser_snapshot';
+          const maxResultLength = isSnapshot ? 8000 : 2000;
+          const truncatedResult = toolResult.length > maxResultLength
+            ? toolResult.substring(0, maxResultLength) + '\n... (truncated, result was too long)'
             : toolResult;
 
           // Add tool result to messages
@@ -579,8 +648,11 @@ export class CopilotSDKService {
           toolCallsExecuted++;
         }
 
-        // Keep only recent messages to avoid token limits (last 10 messages)
-        const recentMessages = messages.slice(-10);
+        // Keep system message + recent messages to avoid token limits
+        // Preserve first 2 messages (system + user prompt) + last 38 messages for exploration context
+        const recentMessages = messages.length > 40
+          ? [messages[0], messages[1], ...messages.slice(-38)]
+          : messages;
 
         // Make another API call with tool results
         response = await fetch('https://api.githubcopilot.com/chat/completions', {
@@ -603,7 +675,7 @@ export class CopilotSDKService {
             messages: recentMessages,
             model: options.model || 'gpt-4o',
             temperature: options.temperature || 0.7,
-            max_tokens: 4096,
+            max_tokens: 16384, // Increased for exploratory testing
             tools: tools,
             tool_choice: 'auto'
           })
@@ -1524,6 +1596,37 @@ Result: Round Trip option successfully selected ✓"
 10: Pressed Enter
 11: Verified field value = 'Kolkata (CCU)'
 Result: Departure city set to CCU/Kolkata ✓"
+
+========================================
+⚠️ CRITICAL: browser_evaluate SERIALIZATION RULES ⚠️
+========================================
+
+browser_evaluate ONLY accepts SIMPLE serializable functions.
+These WILL FAIL with "Passed function is not well-serializable!":
+
+❌ FORBIDDEN in browser_evaluate:
+- Array.from(document.querySelectorAll('*')).filter(el => ...)
+- document.querySelectorAll(...).map(el => ...)
+- getComputedStyle(el).zIndex
+- Complex closures with .forEach, .filter, .map on NodeLists
+- Any function that uses external variables from closure scope
+
+✅ ALLOWED in browser_evaluate:
+- () => document.title
+- () => window.location.href
+- () => document.querySelector('h1')?.textContent
+- () => document.readyState
+- () => document.querySelectorAll('a').length  (just a count, not iteration)
+
+✅ For COMPLEX JavaScript, use browser_run_code instead:
+Format: async (page) => { return await page.evaluate(() => { /* complex code */ }); }
+Examples:
+  async (page) => { return await page.title(); }
+  async (page) => { return await page.evaluate(() => Array.from(document.querySelectorAll('h2')).map(el => el.textContent)); }
+  async (page) => { const links = await page.$$eval('a', els => els.map(e => e.href)); return links.slice(0, 10); }
+
+✅ BEST for element discovery: Use browser_snapshot (not browser_evaluate!)
+browser_snapshot gives you ALL elements with their refs for clicking without any JS.
 
 ========================================
 UNIVERSAL WEB AUTOMATION BEST PRACTICES:

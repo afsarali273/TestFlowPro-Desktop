@@ -1,4 +1,5 @@
 import { Plan } from '@/types/ralph-loop'
+import { generateExplorationPrompt } from '../prompts/exploration-prompts';
 
 interface ExplorationResult {
   success: boolean
@@ -30,45 +31,19 @@ export async function exploreAndGenerateScenarios(
       return { success: false, error: 'MCP servers not ready. Please try again.' }
     }
 
-    // Phase 1: Explore the website using Playwright MCP
-    const explorationPrompt = `You are an expert QA automation engineer performing exploratory testing.
+    // Phase 1: Explore the website using Playwright MCP with iterative task discovery
+    const explorationPrompt = generateExplorationPrompt({
+      url: fullUrl,
+      context: context,
+      minScenarios: 50,
+      maxScenarios: 100,
+      mode: 'deep'
+    })
 
-**TASK**: Explore ${fullUrl} and discover all possible test scenarios
-
-**CONTEXT**: ${context?.trim() || 'Explore the entire website systematically'}
-
-**INSTRUCTIONS**:
-1. Navigate to ${fullUrl}
-2. Take a snapshot to understand the page structure
-3. ${context?.trim() ? 'Focus on the specific areas mentioned in the context' : 'Identify all interactive elements (buttons, links, forms, inputs)'}
-4. ${context?.trim() ? 'Prioritize areas mentioned in the context' : 'Click on major navigation links and explore key pages'}
-5. Take snapshots of important pages
-6. Document user flows and features discovered
-7. ${context?.trim() ? 'Focus on the specific modules, features, or flows mentioned in the context' : 'Cover main user journeys and critical features'}
-
-**IMPORTANT RULES**:
-- Use Playwright MCP tools (browser_navigate, browser_snapshot, browser_click, browser_type, browser_fill_form, etc.)
-- ${context?.trim() ? 'Prioritize areas mentioned in the specific instructions' : 'Explore thoroughly but efficiently (visit 5-7 key pages maximum)'}
-- Handle any popups, modals, or cookie banners appropriately
-- If you encounter login forms and credentials are provided, use them
-- Document what you find as you explore
-- Be systematic and thorough
-
-After exploration, provide a JSON response with discovered test scenarios in this format:
-{
-  "scenarios": [
-    {
-      "title": "Scenario title",
-      "description": "What to test",
-      "page": "Page URL or name",
-      "category": "Category (e.g., Navigation, Search, Forms, Login, Dashboard, etc.)",
-      "priority": "high|medium|low",
-      "steps": ["Step 1", "Step 2", "Step 3"]
-    }
-  ]
-}
-
-Begin exploration now using MCP tools. Be thorough and systematic.`
+    console.log('🚀 Starting iterative AI exploration for:', fullUrl)
+    console.log('📝 Exploration mode: DEEP (iterative task discovery)')
+    console.log('📊 Target scenarios: 50-100 comprehensive test scenarios')
+    console.log('📝 Prompt length:', explorationPrompt.length, 'characters')
 
     const response = await fetch('/api/copilot-chat', {
       method: 'POST',
@@ -78,12 +53,33 @@ Begin exploration now using MCP tools. Be thorough and systematic.`
         type: 'mcp-agent',
         provider: 'github-copilot',
         agentMode: true,
-        mcpTools: mcpTools
+        mcpTools: mcpTools,
+        model: 'gpt-4o' // Use GPT-4o for best tool-calling capability
       })
     })
 
+    if (!response.ok) {
+      console.error('❌ API response not OK:', response.status, response.statusText)
+      return {
+        success: false,
+        error: `API request failed: ${response.status} ${response.statusText}`
+      }
+    }
+
     const data = await response.json()
+    console.log('📦 API Response received, length:', JSON.stringify(data).length)
+
     const explorationResult = data.response
+
+    if (!explorationResult) {
+      console.error('❌ No response from AI')
+      return {
+        success: false,
+        error: 'No response received from AI agent'
+      }
+    }
+
+    console.log('🔍 Parsing exploration result...')
 
     // Parse discovered scenarios
     const scenarios = parseExplorationResult(explorationResult)
@@ -91,15 +87,40 @@ Begin exploration now using MCP tools. Be thorough and systematic.`
     if (scenarios.length === 0) {
       return {
         success: false,
-        error: 'Unable to discover test scenarios. Please try again.'
+        error: 'Unable to discover test scenarios. The AI did not return valid scenario data. Please try again.'
       }
+    }
+
+    console.log(`✅ Parsed ${scenarios.length} scenarios`)
+
+    if (scenarios.length < 20) {
+      console.warn(`⚠️ Only ${scenarios.length} scenarios generated (expected 50-100). AI may not have completed iterative exploration cycles.`)
+    }
+
+    if (scenarios.length < 50) {
+      console.warn(`⚠️ ${scenarios.length} scenarios generated - below target of 50. Consider re-running for deeper coverage.`)
     }
 
     // Generate detailed exploration summary
     const explorationSummary = generateExplorationSummary(fullUrl, context, scenarios, explorationResult)
 
     // Phase 2: Convert scenarios to executable tasks
-    const tasks = scenarios.flatMap((scenario: any, idx: number) =>
+    // Ensure every scenario starts with a navigation step to the correct URL
+    const scenariosWithNav = scenarios.map((scenario: any) => {
+      const navStep = `Navigate to ${fullUrl}`;
+      const alreadyHasNav = scenario.steps?.length > 0 &&
+        (scenario.steps[0].toLowerCase().includes('navigate') ||
+         scenario.steps[0].toLowerCase().includes('go to') ||
+         scenario.steps[0].toLowerCase().includes(fullUrl));
+
+      // Ensure the navigation step is correctly added
+      return {
+        ...scenario,
+        steps: alreadyHasNav ? scenario.steps : [navStep, ...scenario.steps]
+      };
+    })
+
+    const tasks = scenariosWithNav.flatMap((scenario: any, idx: number) =>
       scenario.steps.map((step: string, stepIdx: number) => ({
         id: `task-${Date.now()}-${idx}-${stepIdx}`,
         title: `${scenario.title} - Step ${stepIdx + 1}`,
@@ -121,7 +142,7 @@ Begin exploration now using MCP tools. Be thorough and systematic.`
       mode: 'exploratory',
       explorationUrl: fullUrl,
       explorationSummary: explorationSummary,
-      discoveredScenarios: scenarios.map((s: any) => ({
+      discoveredScenarios: scenariosWithNav.map((s: any) => ({
         id: `scenario-${Date.now()}-${Math.random()}`,
         title: s.title,
         description: s.description,
@@ -149,27 +170,83 @@ Begin exploration now using MCP tools. Be thorough and systematic.`
 
 function parseExplorationResult(resultText: string): any[] {
   try {
-    // Try to extract JSON from response
-    const jsonMatch = resultText.match(/\{[\s\S]*"scenarios"[\s\S]*}/)
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0])
-      return parsed.scenarios || []
+    console.log('📥 Raw exploration result:', resultText.substring(0, 500))
+
+    // Remove markdown code blocks if present
+    let cleanedText = resultText.replace(/```json\s*/g, '').replace(/```\s*/g, '')
+
+    // Try to extract JSON object with scenarios
+    const jsonObjectMatch = cleanedText.match(/\{[\s\S]*"scenarios"[\s\S]*}/);
+    const scenariosArrayMatch = cleanedText.match(/"scenarios"\s*:\s*(\[[\s\S]*?])/);
+    if (jsonObjectMatch) {
+      try {
+        const parsed = JSON.parse(jsonObjectMatch[0])
+        if (parsed.scenarios && Array.isArray(parsed.scenarios) && parsed.scenarios.length > 0) {
+          console.log(`✅ Successfully parsed ${parsed.scenarios.length} scenarios from JSON object`)
+          return parsed.scenarios
+        }
+      } catch (e) {
+        console.warn('⚠️ Failed to parse JSON object:', e)
+      }
     }
 
-    // Alternative: look for array
-    const arrayMatch = resultText.match(/\[[\s\S]*]/)
-    if (arrayMatch) {
-      const parsed = JSON.parse(arrayMatch[0])
-      return Array.isArray(parsed) ? parsed : []
+    // Try to extract just the scenarios array
+    if (scenariosArrayMatch) {
+      try {
+        const scenariosArray = JSON.parse(scenariosArrayMatch[1])
+        if (Array.isArray(scenariosArray) && scenariosArray.length > 0) {
+          console.log(`✅ Successfully parsed ${scenariosArray.length} scenarios from array`)
+          return scenariosArray
+        }
+      } catch (e) {
+        console.warn('⚠️ Failed to parse scenarios array:', e)
+      }
     }
+
+    // Try to parse the entire text as JSON
+    try {
+      const parsed = JSON.parse(cleanedText)
+      if (parsed.scenarios && Array.isArray(parsed.scenarios)) {
+        console.log(`✅ Successfully parsed ${parsed.scenarios.length} scenarios from full text`)
+        return parsed.scenarios
+      }
+      if (Array.isArray(parsed)) {
+        console.log(`✅ Successfully parsed ${parsed.length} scenarios from array`)
+        return parsed
+      }
+    } catch (e) {
+      console.warn('⚠️ Failed to parse full text as JSON:', e)
+    }
+
+    // Try to find multiple scenario objects in the text
+    const scenarioPattern = /\{[^}]*"title"[^}]*"description"[^}]*"steps"[^}]*}/g
+    const scenarioMatches = cleanedText.match(scenarioPattern)
+    if (scenarioMatches && scenarioMatches.length > 0) {
+      console.log(`✅ Found ${scenarioMatches.length} individual scenario objects`)
+      const scenarios = scenarioMatches.map(match => {
+        try {
+          return JSON.parse(match)
+        } catch (e) {
+          return null
+        }
+      }).filter(s => s !== null)
+
+      if (scenarios.length > 0) {
+        return scenarios
+      }
+    }
+
+    console.warn('⚠️ No valid scenarios found in response, using fallback')
+
   } catch (error) {
-    console.error('Failed to parse exploration result:', error)
+    console.error('❌ Failed to parse exploration result:', error)
   }
 
   // Fallback: create basic scenarios from exploration text
+  console.warn('⚠️ Creating fallback scenario - AI did not return proper JSON')
   return [{
     title: 'Explore discovered features',
-    description: 'Test the features discovered during exploration',
+    description: 'Test the features discovered during exploration. Note: AI did not return structured scenarios.',
     page: 'Various pages',
     category: 'Exploratory',
     priority: 'medium',
@@ -314,14 +391,13 @@ function generateExplorationSummary(
   summary += `### AI Exploration Log\n\n`
   summary += `Below is the raw data collected during AI exploration:\n\n`
   summary += `\`\`\`json\n${rawExploration.substring(0, 2000)}${rawExploration.length > 2000 ? '\n...(truncated for brevity)' : ''}\n\`\`\`\n\n`
-  summary += `</details>\n\n`
+  summary += `</details>`
 
   summary += `---\n\n`
-  summary += `<div align="center">\n\n`
+  summary += `<div style="text-align: center;">\n\n`
   summary += `**🤖 Generated by TestFlowPro MCP Agent**\n\n`
   summary += `*Powered by Playwright Browser Automation & AI Intelligence* ✨\n\n`
   summary += `</div>\n`
 
   return summary
 }
-
